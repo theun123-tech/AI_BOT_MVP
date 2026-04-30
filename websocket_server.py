@@ -57,7 +57,10 @@ DEEPGRAM_API_KEY = os.environ.get("DEEPGRAM_API_KEY", "") or (
     os.environ.get("DEEPGRAM_API_KEYS", "").split(",")[0].strip() if
     os.environ.get("DEEPGRAM_API_KEYS", "").strip() else ""
 )
-GROQ_API_KEY     = os.environ.get("GROQ_API_KEY", "")
+GROQ_API_KEY     = os.environ.get("GROQ_API_KEY", "") or (
+    os.environ.get("GROQ_API_KEYS", "").split(",")[0].strip() if
+    os.environ.get("GROQ_API_KEYS", "").strip() else ""
+)
 
 # ── Per-Speaker Flux toggle (client mode only) ──────────────────────────────
 # When True AND mode != "standup":
