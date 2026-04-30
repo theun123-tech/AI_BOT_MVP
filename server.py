@@ -825,18 +825,14 @@ async def handle_clients_research(request):
         import json as _json
         import time as _time
 
-        # Pick a SerpAPI key (first available)
-        serp_key = ""
-        for i in range(1, 18):
-            k = (os.environ.get(f"SERPAPI_KEY_{i}", "") or "").strip().strip('"\'')
-            if k:
-                serp_key = k
-                break
-        if not serp_key:
-            serp_key = (os.environ.get("SERPAPI_KEY", "") or "").strip().strip('"\'')
+        # Pick a SerpAPI key via the shared rotator. Handles all three env
+        # var formats: SERPAPI_KEYS (plural, comma-separated — Stage R),
+        # SERPAPI_KEY (singular), and legacy SERPAPI_KEY_1..N.
+        from key_rotator import key_for_request
+        serp_key = key_for_request("SERPAPI") or ""
         if not serp_key:
             return web.json_response({
-                "error": "SerpAPI not configured (no SERPAPI_KEY_* env vars)"
+                "error": "SerpAPI not configured (set SERPAPI_KEYS in your .env)"
             }, status=500)
 
         # Geo grounding params — control where Google AI Mode "thinks it is".
