@@ -999,7 +999,13 @@ class BotSession:
                 print(f"[{ts()}] {self.tag} ⚠️  Conversation summary failed (non-fatal): {e}")
 
         try:
-            session_store.save_session(session_data)
+            # Standups have their own tab via standup_flow.save_standup() — don't
+            # double-save them into sessions.json (which feeds the Sessions tab).
+            # Client calls and other modes still save here as normal.
+            if self.mode == "standup":
+                print(f"[{ts()}] {self.tag} ℹ️  Standup mode — skipping Sessions-tab save (standup already saved to Standups tab)")
+            else:
+                session_store.save_session(session_data)
         except Exception as e:
             print(f"[{ts()}] {self.tag} ⚠️  Save session failed: {e}")
 
