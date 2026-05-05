@@ -33,12 +33,24 @@ _DIGIT_WORDS = {
 
 def _prep_for_tts(text: str) -> str:
     """Convert numbers to spoken form for TTS clarity."""
-    # SCRUM-15 → "SCRUM fifteen"
+    # SCRUM-15 → "SCRUM one five"
+    # HOR-1   → "H. O. R. one"   (short prefix spelled out)
     def _ticket_repl(m):
-        prefix = m.group(1)
+        prefix = m.group(1).rstrip("-")  # strip trailing dash from "HOR-"
         num = m.group(2)
-        spoken = " ".join(_DIGIT_WORDS.get(d, d) for d in num)
-        return f"{prefix} {spoken}"
+        spoken_num = " ".join(_DIGIT_WORDS.get(d, d) for d in num)
+
+        # Short ALL-CAPS project keys (≤4 letters) are usually acronyms
+        # that don't pronounce as words — Cartesia tries to say "HOR" as
+        # one syllable and it comes out garbled. Spelling letter-by-letter
+        # with periods ("H. O. R.") forces clean letter spelling. Longer
+        # keys like SCRUM/PROJECT pronounce naturally as words, leave them.
+        if len(prefix) <= 4 and prefix.isalpha():
+            spoken_prefix = ". ".join(prefix) + "."
+        else:
+            spoken_prefix = prefix
+
+        return f"{spoken_prefix} {spoken_num}"
 
     text = re.sub(r'\b([A-Z]+-?)(\d+)\b', _ticket_repl, text)
 
@@ -81,8 +93,8 @@ def get_duration_ms(audio_bytes: bytes) -> int:
 RECALL_REGION   = os.environ.get("RECALLAI_REGION", "ap-northeast-1")
 RECALL_API_BASE = f"https://{RECALL_REGION}.recall.ai/api/v1"
 
-CARTESIA_VOICE_ID = "79a125e8-cd45-4c13-8a67-188112f4dd22"
-CARTESIA_MODEL    = "sonic-turbo"
+CARTESIA_VOICE_ID = "6ccbfb76-1fc6-48f7-b71d-91ac6298247b"
+CARTESIA_MODEL    = "sonic-3.5"
 CARTESIA_WS_URL   = "wss://api.cartesia.ai/tts/websocket"
 
 
