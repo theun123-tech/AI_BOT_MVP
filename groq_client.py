@@ -1,1363 +1,740 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sam — AI Meeting Agent</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0a0e17;--bg2:#111827;--card:#1a2235;--card2:#1f2a40;--input:#0d1321;--border:#2a3550;--focus:#3b82f6;--text:#e8ecf4;--text2:#8896b0;--muted:#576785;--accent:#3b82f6;--aglow:rgba(59,130,246,.25);--ahover:#2563eb;--green:#10b981;--gglow:rgba(16,185,129,.2);--red:#ef4444;--rglow:rgba(239,68,68,.15);--yellow:#f59e0b;--yglow:rgba(245,158,11,.15);--purple:#8b5cf6;--pglow:rgba(139,92,246,.2);--r:12px;--rs:8px;--t:.2s cubic-bezier(.4,0,.2,1)}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
-.hidden{display:none!important}
-#login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;position:relative;z-index:1}
-.login-container{width:100%;max-width:420px;animation:fadeUp .6s ease-out}
-.login-logo{text-align:center;margin-bottom:40px}
-.login-logo .ico{width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:16px;box-shadow:0 8px 32px rgba(59,130,246,.3)}
-.login-logo h1{font-size:28px;font-weight:700}
-.login-logo p{color:var(--text2);font-size:14px;margin-top:6px}
-.login-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:32px}
-.fg{margin-bottom:20px}
-.fg label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
-.fi{width:100%;padding:11px 14px;background:var(--input);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:border var(--t)}
-.fi:focus{border-color:var(--focus);box-shadow:0 0 0 3px var(--aglow)}
-.fi::placeholder{color:var(--muted)}
-.fi.mono{font-family:'JetBrains Mono',monospace;font-size:13px}
-select.fi{cursor:pointer;appearance:auto}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border:none;border-radius:var(--rs);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all var(--t);outline:none}
-.btn-p{width:100%;background:var(--accent);color:#fff}
-.btn-p:hover{background:var(--ahover)}
-.btn-p:disabled{opacity:.5;cursor:not-allowed}
-.btn-s{background:var(--card2);color:var(--text);border:1px solid var(--border)}
-.btn-s:hover{border-color:var(--accent)}
-.btn-d{background:var(--red);color:#fff}
-.btn-stop{width:100%;padding:11px;background:transparent;color:var(--red);border:1px solid rgba(239,68,68,.3);border-radius:var(--rs);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
-.btn-stop:hover{background:var(--rglow)}
-.err-box{background:var(--rglow);border:1px solid rgba(239,68,68,.3);color:var(--red);padding:10px 14px;border-radius:var(--rs);font-size:13px;margin-bottom:16px;display:none}
-.err-box.show{display:block}
-.msg{margin-top:10px;padding:9px 12px;border-radius:var(--rs);font-size:13px;display:none}
-.msg.ok{display:block;background:var(--gglow);border:1px solid rgba(16,185,129,.3);color:var(--green)}
-.msg.err{display:block;background:var(--rglow);border:1px solid rgba(239,68,68,.3);color:var(--red)}
-
-#mode-page{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;position:relative;z-index:1}
-.mode-container{width:100%;max-width:560px;animation:fadeUp .6s ease-out}
-.mode-header{text-align:center;margin-bottom:36px}
-.mode-header h2{font-size:24px;font-weight:700;margin-bottom:8px}
-.mode-header p{color:var(--text2);font-size:14px}
-.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
-.mode-card{background:var(--card);border:2px solid var(--border);border-radius:var(--r);padding:28px 20px;text-align:center;cursor:pointer;transition:all var(--t);position:relative}
-.mode-card:hover:not(.dis){border-color:var(--accent);background:var(--card2);transform:translateY(-2px)}
-.mode-card.dis{opacity:.4;cursor:not-allowed}
-.mode-card .mi{font-size:40px;margin-bottom:12px;display:block}
-.mode-card .mn{font-size:18px;font-weight:700;margin-bottom:6px}
-.mode-card .md{font-size:13px;color:var(--text2);line-height:1.5}
-.mode-card .cs{position:absolute;top:12px;right:12px;background:var(--yglow);color:var(--yellow);font-size:10px;font-weight:700;text-transform:uppercase;padding:3px 8px;border-radius:4px}
-.mode-back{text-align:center}
-.mode-back button{background:transparent;color:var(--text2);border:1px solid var(--border);padding:10px 24px;border-radius:var(--rs);font-family:inherit;font-size:13px;cursor:pointer}
-
-#app-page{position:relative;z-index:1;min-height:100vh}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:rgba(17,24,39,.85);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);position:sticky;top:0;z-index:10}
-.topbar-l{display:flex;align-items:center;gap:12px}
-.topbar-logo{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px}
-.topbar-t{font-size:17px;font-weight:700}
-.topbar-m{font-size:11px;font-weight:600;text-transform:uppercase;padding:3px 10px;border-radius:4px;background:var(--pglow);color:var(--purple)}
-.topbar-r{display:flex;align-items:center;gap:14px}
-.topbar-u{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px}
-.topbar-u .dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
-.btn-lo{padding:7px 14px;font-size:12px;background:transparent;color:var(--text2);border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;font-family:inherit}
-.btn-lo:hover{color:var(--red);border-color:var(--red)}
-
-.tab-bar{display:flex;border-bottom:1px solid var(--border);background:rgba(17,24,39,.5);padding:0 28px}
-.tab-btn{padding:12px 20px;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer}
-.tab-btn:hover{color:var(--text2)}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-c{max-width:760px;margin:0 auto;padding:32px 24px}
-
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px 26px;margin-bottom:20px}
-.card.active{border-color:var(--green)}
-.card-t{font-size:15px;font-weight:600;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-.st-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.st-i{display:flex;align-items:center;gap:10px}
-.st-dot{width:12px;height:12px;border-radius:50%;background:var(--muted);transition:all var(--t)}
-.st-dot.on{background:var(--green);box-shadow:0 0 12px var(--gglow);animation:pulse 2s infinite}
-.st-l{font-size:16px;font-weight:600}
-.badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;text-transform:uppercase}
-.badge.idle{background:rgba(87,103,133,.15);color:var(--muted)}
-.badge.live{background:var(--gglow);color:var(--green)}
-.det{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.det-l{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:600}
-.det-v{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text2);word-break:break-all}
-.inp-g{display:flex;gap:10px;margin-bottom:14px}
-
-.sess-empty{color:var(--muted);font-size:14px;text-align:center;padding:40px 0}
-.sess-item{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
-.sess-item:hover{border-color:var(--focus)}
-.sess-h{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;user-select:none}
-.sess-meta{display:flex;flex-direction:column;gap:4px}
-.sess-date{font-size:14px;font-weight:600}
-.sess-info{font-size:12px;color:var(--text2);display:flex;gap:12px;flex-wrap:wrap}
-.sess-badges{display:flex;gap:8px;align-items:center}
-.sess-tc{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;background:var(--aglow);color:var(--accent)}
-.sess-exp{color:var(--muted);font-size:18px;transition:transform var(--t)}
-.sess-item.expanded .sess-exp{transform:rotate(180deg)}
-.sess-body{display:none;padding:0 20px 16px;border-top:1px solid var(--border)}
-.sess-item.expanded .sess-body{display:block}
-.sess-sum{font-size:13px;color:var(--text2);padding:12px 0;line-height:1.6}
-.ai-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
-.ai-row{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--input);border-radius:var(--rs);margin-bottom:6px;font-size:13px}
-.ai-left{display:flex;align-items:center;gap:8px}
-.ai-type{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase}
-.ai-type.bug{background:var(--rglow);color:var(--red)}
-.ai-type.story{background:var(--gglow);color:var(--green)}
-.ai-type.task{background:var(--aglow);color:var(--accent)}
-.ai-right{display:flex;align-items:center;gap:10px}
-.ai-pri{font-size:11px;color:var(--muted)}
-.ai-jira{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);text-decoration:none;font-weight:600}
-.ai-jira:hover{text-decoration:underline}
-.tr-toggle{margin-top:12px;padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--rs);color:var(--text2);font-size:12px;font-family:inherit;cursor:pointer}
-.tr-box{display:none;margin-top:10px;padding:12px;background:var(--input);border-radius:var(--rs);max-height:300px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.7;color:var(--text2)}
-.tr-box.show{display:block}
-
-.set-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(42,53,80,.3)}
-.set-row:last-child{border-bottom:none}
-.set-label{font-size:13px;color:var(--text2);min-width:80px}
-.set-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text)}
-.set-val.na{color:var(--muted);font-style:italic;font-family:inherit}
-.btn-test{padding:8px 18px;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
-.btn-test.ok{border-color:var(--green);color:var(--green)}
-.btn-test.fail{border-color:var(--red);color:var(--red)}
-.pending-box{background:var(--yglow);border:1px solid rgba(245,158,11,.3);border-radius:var(--rs);padding:14px;margin-bottom:20px;font-size:13px;color:var(--yellow)}
-.pending-box .ct{font-weight:700}
-
-.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{box-shadow:0 0 12px var(--gglow)}50%{box-shadow:0 0 20px var(--gglow),0 0 4px var(--green)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.su-stats{display:flex;gap:16px;flex-wrap:wrap}
-.su-stat{background:var(--card2);padding:12px 20px;border-radius:var(--rs);text-align:center;min-width:100px}
-.su-stat .sv{font-size:24px;font-weight:700;color:var(--accent)}
-.su-stat .sl{font-size:11px;color:var(--text2);text-transform:uppercase;margin-top:2px}
-.su-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
-.su-card.has-blocker{border-left:3px solid #f87171}
-.su-head{display:flex;align-items:flex-start;justify-content:space-between;padding:16px 20px;cursor:pointer;gap:12px}
-.su-head:hover{background:var(--card2)}
-.su-head-main{flex:1;min-width:0}
-.su-name{font-weight:700;font-size:15px}
-.su-time{font-size:12px;color:var(--text2)}
-.su-preview{font-size:13px;color:var(--text2);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4}
-.su-preview .sep{color:var(--border);margin:0 6px}
-.su-preview .blocker-chip{color:#f87171;font-weight:600}
-.su-card.expanded .su-preview{display:none}
-.su-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;flex-shrink:0}
-.su-badge.done{background:var(--gglow);color:var(--green)}
-.su-badge.partial{background:var(--yglow);color:var(--yellow)}
-.su-body{padding:0 20px 16px;display:none}
-.su-card.expanded .su-body{display:block}
-.su-section{margin-bottom:12px}
-.su-label{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text2);margin-bottom:4px}
-.su-text{font-size:14px;line-height:1.6}
-.su-blocker{color:#f87171;font-weight:600}
-.su-jira{display:inline-flex;align-items:center;gap:4px;background:var(--card2);padding:3px 10px;border-radius:var(--rs);font-size:12px;font-weight:600;color:var(--accent);text-decoration:none;margin:2px 4px 2px 0}
-.su-jira:hover{background:var(--accent);color:#fff}
-.su-section.expandable{cursor:pointer;border-radius:6px;padding:8px;margin:-8px -8px 4px -8px;transition:background 0.1s}
-.su-section.expandable:hover{background:var(--card2)}
-.su-section.expandable .expand-arrow{display:inline-block;transition:transform 0.15s;color:var(--text2);margin-right:4px}
-.su-section.expandable.expanded .expand-arrow{transform:rotate(90deg)}
-.su-raw{display:none;margin-top:8px;padding:10px 12px;background:var(--card2);border-left:3px solid var(--accent);border-radius:4px;font-size:13px;font-style:italic;color:var(--text2);line-height:1.5}
-.su-section.expandable.expanded .su-raw{display:block}
-.su-raw .raw-label{font-size:10px;font-weight:700;text-transform:uppercase;font-style:normal;color:var(--text2);display:block;margin-bottom:4px;letter-spacing:0.5px}
-.su-empty{text-align:center;padding:40px;color:var(--text2)}
-
-@media(max-width:600px){.topbar{padding:12px 16px}.tab-bar{padding:0 16px}.tab-c{padding:20px 16px}.inp-g{flex-direction:column}.det{grid-template-columns:1fr}.mode-grid{grid-template-columns:1fr}.su-stats{flex-direction:column}}
-/* ── Phase 3: Meeting Setup Panel ─────────────────────────────────────── */
-.setup-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:20px;overflow:hidden}
-.setup-head{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;cursor:pointer;user-select:none;transition:background var(--t)}
-.setup-head:hover{background:var(--card2)}
-.setup-head .sh-l{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
-.setup-head .sh-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--aglow);color:var(--accent);text-transform:uppercase;letter-spacing:0.5px}
-.setup-head .sh-x{color:var(--muted);font-size:13px;transition:transform var(--t)}
-.setup-card.open .setup-head .sh-x{transform:rotate(180deg)}
-.setup-body{display:none;padding:8px 22px 22px;border-top:1px solid var(--border)}
-.setup-card.open .setup-body{display:block}
-.setup-sec{margin-top:18px}
-.setup-sec:first-child{margin-top:12px}
-.setup-sec-t{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text2);margin-bottom:8px}
-
-/* Template row */
-.tpl-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.tpl-row select{flex:1;min-width:140px;font-family:inherit;font-size:13px}
-.tpl-btn{padding:8px 14px;background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:var(--rs);font-family:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
-.tpl-btn:hover{border-color:var(--accent);color:var(--accent)}
-.tpl-btn.danger:hover{border-color:var(--red);color:var(--red)}
-
-/* Agenda items list */
-.ag-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
-.ag-item{display:flex;align-items:center;gap:8px;background:var(--input);border:1px solid var(--border);border-radius:var(--rs);padding:8px 12px;font-size:13px}
-.ag-item input{flex:1;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:13px;outline:none;padding:0}
-.ag-item input::placeholder{color:var(--muted)}
-.ag-item .ag-num{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;width:18px}
-.ag-item .ag-del{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:0 4px;line-height:1}
-.ag-item .ag-del:hover{color:var(--red)}
-.ag-add{padding:7px 12px;background:transparent;color:var(--text2);border:1px dashed var(--border);border-radius:var(--rs);font-family:inherit;font-size:12px;cursor:pointer;width:100%;text-align:left}
-.ag-add:hover{border-color:var(--accent);color:var(--accent)}
-
-/* Ticket picker */
-.tk-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:4px}
-.tk-chip{display:inline-flex;align-items:center;gap:6px;background:var(--aglow);color:var(--accent);border:1px solid rgba(59,130,246,.4);border-radius:14px;padding:4px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600}
-.tk-chip button{background:none;border:none;color:inherit;cursor:pointer;padding:0;font-size:14px;line-height:1;opacity:.7}
-.tk-chip button:hover{opacity:1}
-.tk-search{position:relative}
-.tk-results{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:var(--rs);max-height:260px;overflow-y:auto;z-index:20;box-shadow:0 10px 30px rgba(0,0,0,.4);display:none}
-.tk-results.show{display:block}
-.tk-result{padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(42,53,80,.3);transition:background var(--t)}
-.tk-result:last-child{border-bottom:none}
-.tk-result:hover,.tk-result.active{background:var(--card2)}
-.tk-result .tk-k{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--accent);font-size:11px}
-.tk-result .tk-s{color:var(--text);margin-top:2px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tk-result .tk-meta{color:var(--muted);font-size:10px;margin-top:2px}
-.tk-empty{padding:10px 12px;color:var(--muted);font-size:12px;font-style:italic}
-
-/* Scope fields */
-.scope-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:600px){.scope-row{grid-template-columns:1fr}}
-.scope-row .fi{font-size:12px}
-
-/* Prior context preview */
-.pc-box{background:var(--card2);border:1px solid var(--border);border-radius:var(--rs);overflow:hidden}
-.pc-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;font-size:12px;color:var(--text2);transition:background var(--t)}
-.pc-head:hover{background:rgba(42,53,80,.4)}
-.pc-head .pc-x{font-size:11px;transition:transform var(--t)}
-.pc-box.open .pc-head .pc-x{transform:rotate(180deg)}
-.pc-body{display:none;padding:0 14px 12px;border-top:1px solid var(--border);max-height:240px;overflow-y:auto}
-.pc-box.open .pc-body{display:block}
-.pc-sum{padding:10px 0;font-size:12px;line-height:1.55;color:var(--text2);border-bottom:1px solid rgba(42,53,80,.3)}
-.pc-sum:last-child{border-bottom:none}
-.pc-date{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
-
-/* Template save dialog inline */
-.tpl-input-row{display:flex;gap:6px;align-items:center;margin-top:8px}
-.tpl-input-row.hidden{display:none}
-.tpl-input-row input{flex:1;padding:7px 10px;background:var(--input);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:inherit;font-size:12px;outline:none}
-
-/* Small helper */
-.setup-hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
-
-</style>
-</head>
-<body>
-
-<div id="login-page">
-<div class="login-container"><div class="login-logo"><div class="ico">🤖</div><h1>Sam</h1><p>AI Meeting Agent — Control Panel</p></div>
-<div class="login-card"><div id="login-error" class="err-box"></div>
-<div class="fg"><label>Username</label><input type="text" id="login-user" class="fi" placeholder="Enter username"></div>
-<div class="fg"><label>Password</label><input type="password" id="login-pass" class="fi" placeholder="Enter password"></div>
-<button id="login-btn" class="btn btn-p" onclick="doLogin()">Sign In</button></div></div></div>
-
-<div id="mode-page" class="hidden">
-<div class="mode-container"><div class="mode-header"><h2>Choose Meeting Mode</h2><p>Select how Sam should behave</p></div>
-<div class="mode-grid">
-<div class="mode-card" onclick="selectMode('standup')"><span class="mi">🎯</span><div class="mn">Standup</div><div class="md">Daily standup assistant. Tracks blockers and updates.</div></div>
-<div class="mode-card" onclick="selectMode('client_call')"><span class="mi">💬</span><div class="mn">Client Call</div><div class="md">Captures bugs, feature requests, and action items.</div></div>
-</div><div class="mode-back"><button onclick="doLogout()">← Sign out</button></div></div></div>
-
-<div id="app-page" class="hidden">
-<div class="topbar"><div class="topbar-l"><div class="topbar-logo">🤖</div><span class="topbar-t">Sam</span><span id="topbar-mode" class="topbar-m">Client Call</span></div>
-<div class="topbar-r"><div class="topbar-u"><span class="dot"></span><span id="display-user">admin</span></div>
-<button class="btn-lo" onclick="backToModes()">Switch Mode</button><button class="btn-lo" onclick="doLogout()">Log out</button></div></div>
-
-<div class="tab-bar">
-<button class="tab-btn active" onclick="switchTab('dash',this)">Dashboard</button>
-<button class="tab-btn" onclick="switchTab('sess',this)">Sessions</button>
-<button class="tab-btn" onclick="switchTab('standups',this)">Standups</button>
-<button class="tab-btn" onclick="switchTab('settings',this)">Settings</button>
-</div>
-
-<div id="tab-dash" class="tab-c">
-<div id="status-card" class="card"><div class="st-h"><div class="st-i"><div id="st-dot" class="st-dot"></div><span id="st-label" class="st-l">Idle</span></div><span id="st-badge" class="badge idle">Standby</span></div>
-<div id="st-details" class="det hidden"><div><span class="det-l">Bot ID</span><span id="det-bid" class="det-v">—</span></div><div><span class="det-l">Uptime</span><span id="det-up" class="det-v">—</span></div><div style="grid-column:span 2"><span class="det-l">Meeting</span><span id="det-url" class="det-v">—</span></div></div></div>
-<div class="card"><div class="card-t">🎯 Deploy Sam</div><div class="inp-g"><input type="url" id="meet-url" class="fi mono" placeholder="https://meet.google.com/abc-defg-hij"><button id="deploy-btn" class="btn btn-p" style="width:auto;padding:11px 24px" onclick="deploySam()">🚀 Deploy</button></div>
-<button id="stop-btn" class="btn-stop hidden" onclick="stopSam()">🛑 Remove Sam</button><div id="ctrl-msg" class="msg"></div></div>
-<!-- Phase 3: Meeting Setup Panel (optional — empty setup = current behavior) -->
-<div id="setup-card" class="setup-card">
-  <div class="setup-head" onclick="toggleSetup()">
-    <div class="sh-l">⚙️ Meeting setup <span class="sh-badge" id="setup-badge">Optional</span></div>
-    <div class="sh-x">▼</div>
-  </div>
-  <div class="setup-body">
-
-    <!-- Templates -->
-    <div class="setup-sec">
-      <div class="setup-sec-t">📂 Templates</div>
-      <div class="tpl-row">
-        <select id="tpl-select" class="fi" onchange="loadTemplate(this.value)">
-          <option value="">— Select template to load —</option>
-        </select>
-        <button class="tpl-btn" onclick="toggleSaveTemplate()">💾 Save as...</button>
-        <button class="tpl-btn danger" onclick="deleteTemplate()">🗑 Delete</button>
-      </div>
-      <div id="tpl-save-row" class="tpl-input-row hidden">
-        <input type="text" id="tpl-save-name" placeholder="Template name (e.g., 'weekly sync')" maxlength="60">
-        <button class="tpl-btn" onclick="saveTemplate()">Save</button>
-        <button class="tpl-btn" onclick="toggleSaveTemplate()">Cancel</button>
-      </div>
-    </div>
-
-    <!-- Agenda -->
-    <div class="setup-sec">
-      <div class="setup-sec-t">📋 Agenda topics</div>
-      <div id="ag-list" class="ag-list"></div>
-      <button class="ag-add" onclick="addAgendaItem()">+ Add topic</button>
-    </div>
-
-    <!-- Tickets -->
-    <div class="setup-sec">
-      <div class="setup-sec-t">🎫 Tickets in focus</div>
-      <div id="tk-chips" class="tk-chips"></div>
-      <div class="tk-search">
-        <input type="text" id="tk-input" class="fi" placeholder="Search by key (SCRUM-244) or summary..." autocomplete="off">
-        <div id="tk-results" class="tk-results"></div>
-      </div>
-      <div class="setup-hint">Tickets here are pre-fetched so Sam answers faster during the call.</div>
-    </div>
-
-    <!-- Scope -->
-    <div class="setup-sec">
-      <div class="setup-sec-t">🎯 Scope</div>
-      <div class="scope-row">
-        <div>
-          <label style="display:block;font-size:10px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">In-scope topics</label>
-          <input type="text" id="scope-in" class="fi" placeholder="budget, timeline, auth">
-        </div>
-        <div>
-          <label style="display:block;font-size:10px;font-weight:600;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Out-of-scope topics</label>
-          <input type="text" id="scope-out" class="fi" placeholder="personnel, grants">
-        </div>
-      </div>
-      <div class="setup-hint">Comma-separated. Sam will gently redirect if conversation drifts out of scope.</div>
-    </div>
-
-    <!-- Expected participants + prior context -->
-    <div class="setup-sec">
-      <div class="setup-sec-t">👥 Expected participants <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(for prior context)</span></div>
-      <input type="text" id="participants-input" class="fi" placeholder="Sahil, Vanshita, ..." oninput="debouncePriorContext()">
-      <div id="pc-box" class="pc-box" style="margin-top:10px;display:none">
-        <div class="pc-head" onclick="togglePriorContext()">
-          <span id="pc-title">📜 Prior context (0)</span>
-          <span class="pc-x">▼</span>
-        </div>
-        <div class="pc-body" id="pc-body"></div>
-      </div>
-    </div>
-
-    <!-- Client research (Know About Them) -->
-    <div class="setup-sec">
-      <div class="setup-sec-t">🔍 Know about your clients <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(grounds Sam in their business)</span></div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Client names (comma-separated)</div>
-          <input type="text" id="client-names-input" class="fi" placeholder="e.g. Mardochée, Sabina Michel" oninput="_onClientFieldsChanged()">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:4px">Company names (comma-separated)</div>
-          <input type="text" id="company-names-input" class="fi" placeholder="e.g. Life of Hope, Acme Inc" oninput="_onClientFieldsChanged()">
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <button id="know-about-btn" class="btn btn-s" style="padding:8px 16px" onclick="researchClients()" disabled>🔎 Know About Them</button>
-          <span id="cp-status" style="font-size:12px;color:var(--muted)"></span>
-        </div>
-        <div id="cp-result" style="display:none;margin-top:10px;border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg2)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:13px;font-weight:600;color:var(--text)">📋 Profile (edit if needed before saving)</div>
-            <div id="cp-wordcount" style="font-size:12px;color:var(--muted)">0 / 300 words</div>
-          </div>
-          <textarea id="cp-textarea" class="fi" rows="8" style="width:100%;font-family:inherit;line-height:1.5;resize:vertical" placeholder="Profile will appear here…" oninput="_onProfileEdited()"></textarea>
-          <div id="cp-diagnostic" style="display:none;margin-top:8px;padding:8px 10px;background:var(--bg);border:1px dashed var(--border);border-radius:6px;font-size:11px;color:var(--muted);font-family:monospace"></div>
-          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-            <button class="btn btn-s" style="padding:6px 14px;background:#2ea043" onclick="saveClientProfile()">✓ Save profile</button>
-            <button class="btn btn-s" style="padding:6px 14px" onclick="researchClients()">↻ Try again</button>
-            <button class="btn btn-s" style="padding:6px 14px;background:var(--bg);color:var(--text)" onclick="clearClientProfile()">✗ Clear</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Duration -->
-    <div class="setup-sec">
-      <div class="setup-sec-t">⏱ Planned duration</div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <input type="number" id="duration-min" class="fi" style="width:100px" min="5" max="180" value="30">
-        <span style="color:var(--text2);font-size:13px">minutes</span>
-      </div>
-    </div>
-
-  </div>
-</div>
-</div>
-
-<div id="tab-sess" class="tab-c hidden"><div id="sess-list"></div></div>
-
-<div id="tab-standups" class="tab-c hidden">
-<div class="card">
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-<div class="card-t" style="margin:0">📋 Team Standups</div>
-<div style="display:flex;align-items:center;gap:10px">
-<input type="date" id="standup-date" class="fi" style="width:auto;padding:8px 12px" onchange="loadStandups()">
-<button class="btn btn-s" style="padding:8px 16px" onclick="loadStandups()">Refresh</button>
-</div>
-</div>
-<div id="standup-stats" style="display:flex;gap:20px;margin-bottom:16px;flex-wrap:wrap"></div>
-<div id="standup-list"></div>
-</div>
-</div>
-
-<div id="tab-settings" class="tab-c hidden">
-<div id="pending-banner" class="pending-box hidden">⚠️ <span class="ct" id="pending-ct">0</span> ticket(s) failed to sync. <button class="btn btn-s" style="margin-left:12px;padding:6px 14px;font-size:12px" onclick="syncPending()">Retry Now</button></div>
-<div class="card"><div class="card-t">🔗 Jira Integration</div>
-<div class="fg"><label>Jira URL</label><input type="url" id="set-jurl" class="fi mono" placeholder="https://yourcompany.atlassian.net"></div>
-<div class="fg"><label>Email</label><input type="email" id="set-jemail" class="fi" placeholder="you@company.com"></div>
-<div class="fg"><label>API Token</label><input type="password" id="set-jtoken" class="fi mono" placeholder="Your Jira API token"></div>
-<div class="fg"><label>Project</label><select id="set-jproject" class="fi"><option value="">Select project...</option></select></div>
-<div class="fg"><label>Sprint</label><select id="set-jsprint" class="fi"><option value="">Auto-detect active sprint</option></select></div>
-<div style="display:flex;gap:10px;margin-top:8px"><button id="btn-jtest" class="btn-test" onclick="testJira()">Test Connection</button><button class="btn btn-s" onclick="loadProjects()">Load Projects</button><button class="btn btn-p" style="width:auto" onclick="saveSettings()">Save Settings</button></div>
-<div id="set-msg" class="msg" style="margin-top:12px"></div>
-</div>
-<div class="card"><div class="card-t">🤖 Azure OpenAI</div>
-<div class="fg"><label>Endpoint</label><input type="url" id="set-aep" class="fi mono" placeholder="https://your-resource.openai.azure.com/"></div>
-<div class="fg"><label>API Key</label><input type="password" id="set-akey" class="fi mono" placeholder="Azure OpenAI key"></div>
-<div class="fg"><label>Deployment</label><input type="text" id="set-adep" class="fi" placeholder="gpt-4o-mini"></div>
-</div>
-<div class="card"><div class="card-t">🎭 Simli Avatar</div>
-<div class="fg" style="display:flex;align-items:center;gap:12px">
-<label style="margin:0">Enable Avatar</label>
-<label style="position:relative;display:inline-block;width:48px;height:26px;margin:0;cursor:pointer">
-<input type="checkbox" id="set-simli-on" style="opacity:0;width:0;height:0">
-<span id="simli-track" style="position:absolute;top:0;left:0;right:0;bottom:0;background:var(--border);border-radius:13px;transition:.3s"></span>
-<span id="simli-slider" style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.3s"></span>
-</label>
-<span id="simli-status" style="font-size:12px;color:var(--muted)">Disabled</span>
-</div>
-<div id="simli-fields">
-<div class="fg"><label>API Key</label><input type="password" id="set-simli-key" class="fi mono" placeholder="Your Simli API key"></div>
-<div class="fg"><label>Face ID</label><input type="text" id="set-simli-face" class="fi mono" placeholder="e.g. tmp9i8bbq7c"></div>
-<p style="font-size:11px;color:var(--muted);margin-top:4px">Get your API key and face ID from <a href="https://app.simli.com" target="_blank" style="color:var(--accent)">app.simli.com</a>. When enabled, Sam will show a talking avatar face in the meeting instead of a blank camera.</p>
-</div>
-</div>
-<p style="font-size:12px;color:var(--muted);margin-top:12px">Settings are saved to settings.json and persist across restarts.</p>
-</div>
-</div>
-
-<script>
-const API=window.location.origin;let token=localStorage.getItem('sam_token'),username=localStorage.getItem('sam_user'),currentMode=localStorage.getItem('sam_mode')||'',statusInterval=null,_jiraUrl='';
-
-window.addEventListener('DOMContentLoaded',()=>{
-if(token&&username&&currentMode)showApp();else if(token&&username)showModePage();else showLogin();
-document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
-document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-pass').focus()});
-document.getElementById('meet-url').addEventListener('keydown',e=>{if(e.key==='Enter')deploySam()});
-document.getElementById('set-jproject').addEventListener('change',()=>loadSprints());
-document.getElementById('set-simli-on').addEventListener('change',()=>updateSimliToggle());
-});
-function updateSimliToggle(){const on=document.getElementById('set-simli-on').checked;const track=document.getElementById('simli-track');const slider=document.getElementById('simli-slider');const status=document.getElementById('simli-status');const fields=document.getElementById('simli-fields');if(on){slider.style.transform='translateX(22px)';track.style.background='var(--accent)';status.textContent='Enabled';status.style.color='var(--green)';fields.style.opacity='1'}else{slider.style.transform='translateX(0)';track.style.background='var(--border)';status.textContent='Disabled';status.style.color='var(--muted)';fields.style.opacity='0.5'}}
-
-async function doLogin(){const u=document.getElementById('login-user').value.trim(),p=document.getElementById('login-pass').value,e=document.getElementById('login-error'),b=document.getElementById('login-btn');if(!u||!p){e.textContent='Enter username and password';e.classList.add('show');return}b.disabled=true;b.innerHTML='<div class="spinner"></div> Signing in...';e.classList.remove('show');try{const r=await fetch(`${API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});const d=await r.json();if(!r.ok){e.textContent=d.error||'Failed';e.classList.add('show');return}token=d.token;username=d.username;localStorage.setItem('sam_token',token);localStorage.setItem('sam_user',username);showModePage()}catch(x){e.textContent='Connection failed';e.classList.add('show')}finally{b.disabled=false;b.innerHTML='Sign In'}}
-function doLogout(){token=null;username=null;currentMode='';localStorage.removeItem('sam_token');localStorage.removeItem('sam_user');localStorage.removeItem('sam_mode');if(statusInterval)clearInterval(statusInterval);showLogin()}
-
-function showLogin(){show('login-page');hide('mode-page');hide('app-page')}
-function showModePage(){hide('login-page');show('mode-page');hide('app-page')}
-function selectMode(m){currentMode=m;localStorage.setItem('sam_mode',m);showApp()}
-function backToModes(){currentMode='';localStorage.removeItem('sam_mode');if(statusInterval)clearInterval(statusInterval);showModePage()}
-function showApp(){hide('login-page');hide('mode-page');show('app-page');document.getElementById('display-user').textContent=username;document.getElementById('topbar-mode').textContent=currentMode==='standup'?'Standup':'Client Call';pollStatus();statusInterval=setInterval(pollStatus,5000);loadSettings()}
-function show(id){document.getElementById(id).classList.remove('hidden')}
-function hide(id){document.getElementById(id).classList.add('hidden')}
-
-function switchTab(name,btn){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-c').forEach(c=>c.classList.add('hidden'));if(btn)btn.classList.add('active');document.getElementById('tab-'+name).classList.remove('hidden');if(name==='sess')loadSessions();if(name==='standups')loadStandups();if(name==='settings'){loadSettings();loadPending()}}
-
-async function api(method,path,body=null){const o={method,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}};if(body)o.body=JSON.stringify(body);const r=await fetch(`${API}${path}`,o);if(r.status===401){doLogout();return null}return r.json()}
-
-async function pollStatus(){try{const d=await api('GET','/status');if(d)updateStatus(d)}catch(e){}}
-function updateStatus(d){const dot=document.getElementById('st-dot'),lbl=document.getElementById('st-label'),bdg=document.getElementById('st-badge'),det=document.getElementById('st-details'),card=document.getElementById('status-card'),stop=document.getElementById('stop-btn');if(d.active){dot.classList.add('on');lbl.textContent='Sam is Live';bdg.className='badge live';bdg.textContent='Live';card.classList.add('active');det.classList.remove('hidden');stop.classList.remove('hidden');document.getElementById('det-bid').textContent=d.bot_id||'—';document.getElementById('det-url').textContent=d.meeting_url||'—';const s=d.uptime_seconds||0;document.getElementById('det-up').textContent=`${Math.floor(s/60)}m ${s%60}s`}else{dot.classList.remove('on');lbl.textContent='Idle';bdg.className='badge idle';bdg.textContent='Standby';card.classList.remove('active');det.classList.add('hidden');stop.classList.add('hidden')}}
-
-async function deploySam(){
-  const u = document.getElementById('meet-url'),
-        b = document.getElementById('deploy-btn'),
-        m = document.getElementById('ctrl-msg'),
-        v = u.value.trim();
-  if(!v){ showMsg(m, 'Enter a meeting URL', 'err'); return; }
-  b.disabled = true;
-  b.innerHTML = '<div class="spinner"></div>';
-  m.style.display = 'none';
-  // Phase 3: pull setup data from the setup panel (null if empty)
-  const setup = _gatherSetup();
-  const payload = { meeting_url: v, mode: currentMode };
-  if(setup) payload.setup = setup;
-  try{
-    const d = await api('POST', '/start', payload);
-    if(!d) return;
-    if(d.error){ showMsg(m, d.error, 'err'); return; }
-    const msg = setup
-      ? `Sam joined with setup! Bot: ${d.bot_id} (${_agendaItems.filter(a => a.title.trim()).length} topics, ${_tickets.length} tickets)`
-      : `Sam joined! Bot: ${d.bot_id}`;
-    showMsg(m, msg, 'ok');
-    pollStatus();
-    u.value = '';
-    // Phase 6 step 1 hotfix: expose session_id so commitments panel auto-starts
-    if (d.session_id) {
-      window._activeSessionId = d.session_id;
-      if (typeof _startCommitmentPolling === 'function') _startCommitmentPolling();
-    }
-  }catch(e){
-    showMsg(m, 'Failed', 'err');
-  }finally{
-    b.disabled = false;
-    b.innerHTML = '🚀 Deploy';
-  }
-}
-async function stopSam(){const m=document.getElementById('ctrl-msg'),b=document.getElementById('stop-btn');b.disabled=true;b.textContent='Removing...';try{await api('POST','/stop');showMsg(m,'Sam left the meeting','ok');pollStatus();window._activeSessionId=null;if(typeof _stopCommitmentPolling==='function')_stopCommitmentPolling();}catch(e){showMsg(m,'Failed','err')}finally{b.disabled=false;b.textContent='🛑 Remove Sam'}}
-
-async function loadSessions(){const c=document.getElementById('sess-list');c.innerHTML='<div class="sess-empty">Loading...</div>';try{const d=await api('GET','/api/sessions');if(!d||!d.sessions||!d.sessions.length){c.innerHTML='<div class="sess-empty">No sessions yet</div>';return}c.innerHTML=d.sessions.map(renderSess).join('')}catch(e){c.innerHTML='<div class="sess-empty">Failed to load</div>'}}
-function renderSess(s){const d=new Date(s.date),ds=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),ts=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),items=s.action_items||[];return`<div class="sess-item" id="ss-${s.session_id}"><div class="sess-h" onclick="toggleSess('${s.session_id}')"><div class="sess-meta"><div class="sess-date">${ds} · ${ts}</div><div class="sess-info"><span>📁 ${esc(s.project||'—')}</span><span>⏱ ${s.duration_minutes||0}min</span><span>📝 ${s.feedback_count||0} items</span><span>🎫 ${s.tickets_created||0} tickets</span></div></div><div class="sess-badges">${s.tickets_created?`<span class="sess-tc">${s.tickets_created} ticket${s.tickets_created>1?'s':''}</span>`:''}  <span class="sess-exp">▼</span></div></div><div class="sess-body">${s.summary?`<div class="sess-sum">${esc(s.summary)}</div>`:''}${items.length?renderItems(items):'<div class="sess-sum" style="color:var(--muted)">No action items</div>'}<button class="tr-toggle" onclick="loadTr('${s.session_id}')">📄 Transcript</button><div id="tr-${s.session_id}" class="tr-box"></div></div></div>`}
-function renderItems(items){return'<div class="ai-title">Action Items</div>'+items.map(i=>{const t=(i.type||'task').toLowerCase(),jl=i.jira_key?`<a class="ai-jira" href="${_jiraUrl}/browse/${i.jira_key}" target="_blank">${i.jira_key} →</a>`:'';return`<div class="ai-row"><div class="ai-left"><span class="ai-type ${t}">${esc(i.type||'Task')}</span><span>${esc(i.summary||'')}</span></div><div class="ai-right"><span class="ai-pri">${esc(i.priority||'')}</span>${jl}</div></div>`}).join('')}
-function toggleSess(id){document.getElementById('ss-'+id).classList.toggle('expanded')}
-async function loadTr(id){const el=document.getElementById('tr-'+id);if(el.classList.contains('show')){el.classList.remove('show');return}el.innerHTML='Loading...';el.classList.add('show');try{const d=await api('GET',`/api/sessions/${id}`);if(!d||!d.transcript){el.innerHTML='No transcript';return}el.innerHTML=d.transcript.map(e=>`<div><strong style="color:var(--accent)">${esc(e.speaker||'?')}:</strong> ${esc(e.text||'')}</div>`).join('')}catch(e){el.innerHTML='Failed'}}
-
-async function loadSettings(){try{const d=await api('GET','/api/settings');if(!d)return;const j=d.jira||{},a=d.azure||{},sl=d.simli||{};document.getElementById('set-jurl').value=j.url||'';document.getElementById('set-jemail').value=j.email||'';document.getElementById('set-jproject').value=j.project||'';_jiraUrl=(j.url||'').replace(/\/+$/,'');document.getElementById('set-aep').value=a.endpoint||'';document.getElementById('set-adep').value=a.deployment||'';document.getElementById('set-simli-on').checked=!!sl.enabled;document.getElementById('set-simli-face').value=sl.face_id||'';updateSimliToggle();if(j.project)loadProjects()}catch(e){}}
-async function saveSettings(){const m=document.getElementById('set-msg');try{const d=await api('POST','/api/settings/save',{jira_url:document.getElementById('set-jurl').value.trim(),jira_email:document.getElementById('set-jemail').value.trim(),jira_token:document.getElementById('set-jtoken').value.trim()||undefined,jira_project:document.getElementById('set-jproject').value,jira_sprint:document.getElementById('set-jsprint').value,azure_endpoint:document.getElementById('set-aep').value.trim(),azure_key:document.getElementById('set-akey').value.trim()||undefined,azure_deployment:document.getElementById('set-adep').value.trim(),simli_enabled:document.getElementById('set-simli-on').checked,simli_api_key:document.getElementById('set-simli-key').value.trim()||undefined,simli_face_id:document.getElementById('set-simli-face').value.trim()});if(d&&d.ok)showMsg(m,'Settings saved!','ok');else showMsg(m,d?.error||'Failed','err')}catch(e){showMsg(m,'Save failed','err')}}
-async function testJira(){const b=document.getElementById('btn-jtest');b.textContent='Testing...';b.className='btn-test';try{const payload={base_url:document.getElementById('set-jurl').value.trim(),email:document.getElementById('set-jemail').value.trim(),token:document.getElementById('set-jtoken').value.trim(),project:document.getElementById('set-jproject').value.trim()};const d=await api('POST','/api/settings/jira/test',payload);if(d&&d.ok){b.textContent='✅ Connected';b.className='btn-test ok'}else{b.textContent='❌ '+(d?.error||'Failed');b.className='btn-test fail'}}catch(e){b.textContent='❌ Error';b.className='btn-test fail'}setTimeout(()=>{b.textContent='Test Connection';b.className='btn-test'},5000)}
-async function loadProjects(){const sel=document.getElementById('set-jproject');const cur=sel.value;try{const payload={base_url:document.getElementById('set-jurl').value.trim(),email:document.getElementById('set-jemail').value.trim(),token:document.getElementById('set-jtoken').value.trim()};const d=await api('POST','/api/jira/projects',payload);if(!d||!d.projects)return;sel.innerHTML='<option value="">Select project...</option>';d.projects.forEach(p=>{const o=document.createElement('option');o.value=p.key;o.textContent=`${p.key} — ${p.name}`;sel.appendChild(o)});if(cur)sel.value=cur}catch(e){}}
-async function loadSprints(){const proj=document.getElementById('set-jproject').value;const sel=document.getElementById('set-jsprint');sel.innerHTML='<option value="">Auto-detect active sprint</option>';if(!proj)return;try{const d=await api('GET',`/api/jira/sprints?project=${proj}`);if(!d||!d.sprints)return;d.sprints.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=`${s.name} (${s.state})`;sel.appendChild(o)})}catch(e){}}
-async function loadPending(){try{const d=await api('GET','/api/pending');const banner=document.getElementById('pending-banner');if(d&&d.count>0){document.getElementById('pending-ct').textContent=d.count;banner.classList.remove('hidden')}else{banner.classList.add('hidden')}}catch(e){}}
-async function syncPending(){try{const d=await api('POST','/api/pending/sync');if(d){const m=document.getElementById('set-msg');showMsg(m,`Synced ${d.synced||0} ticket(s), ${d.failed||0} failed`,'ok');loadPending()}}catch(e){}}
-
-async function loadStandups(){
-const dateInput=document.getElementById('standup-date');
-if(!dateInput.value){const today=new Date();const y=today.getFullYear(),m=String(today.getMonth()+1).padStart(2,'0'),d=String(today.getDate()).padStart(2,'0');dateInput.value=`${y}-${m}-${d}`}
-const date=dateInput.value;
-const stats=document.getElementById('standup-stats');
-const list=document.getElementById('standup-list');
-list.innerHTML='<div class="su-empty">Loading...</div>';
-try{
-const prev=new Date(date+'T12:00:00');prev.setDate(prev.getDate()-1);
-const prevStr=prev.getFullYear()+'-'+String(prev.getMonth()+1).padStart(2,'0')+'-'+String(prev.getDate()).padStart(2,'0');
-const [d1,d2]=await Promise.all([api('GET',`/api/standups?date=${date}`),api('GET',`/api/standups?date=${prevStr}`)]);
-const all=[...(d1?.standups||[]),...(d2?.standups||[])];
-const seen=new Set();
-const standups=all.filter(s=>{const k=s.developer;if(seen.has(k))return false;const ts=s.completed_at||s.started_at;if(ts){const ld=new Date(ts);const lds=ld.getFullYear()+'-'+String(ld.getMonth()+1).padStart(2,'0')+'-'+String(ld.getDate()).padStart(2,'0');if(lds!==date)return false}seen.add(k);return true});
-// Sort: real blockers first (PM attention), then incomplete, then by completion time (newest first)
-standups.sort((a,b)=>{
-  const ab=_isRealBlocker(a)?1:0;
-  const bb=_isRealBlocker(b)?1:0;
-  if(ab!==bb)return bb-ab; // blockers first
-  const ac=a.completed?1:0;
-  const bc=b.completed?1:0;
-  if(ac!==bc)return ac-bc; // incomplete before complete
-  const at=new Date(a.completed_at||a.started_at||0).getTime();
-  const bt=new Date(b.completed_at||b.started_at||0).getTime();
-  return bt-at; // newest first
-});
-const blocker_count=standups.reduce((n,s)=>n+(_isRealBlocker(s)?1:0),0);
-const completed=standups.filter(s=>s.completed).length;
-stats.innerHTML=`<div class="su-stat"><div class="sv">${standups.length}</div><div class="sl">Total</div></div><div class="su-stat"><div class="sv">${completed}</div><div class="sl">Completed</div></div><div class="su-stat"><div class="sv" style="color:${blocker_count>0?'#f87171':'var(--green)'}">${blocker_count}</div><div class="sl">Blockers</div></div>`;
-if(!standups.length){list.innerHTML='<div class="su-empty">No standups for this date</div>';return}
-list.innerHTML=standups.map((s,i)=>renderStandup(s,i)).join('');
-// Wire up expandable section click handlers (delegation avoids inline onclick quoting issues)
-list.querySelectorAll('[data-expandable="1"]').forEach(el=>{
-  el.addEventListener('click', function(ev){
-    ev.stopPropagation();
-    this.classList.toggle('expanded');
-  });
-});
-}catch(e){list.innerHTML='<div class="su-empty">Failed to load</div>'}}
-
-// Real-blocker check — prefers the LLM-classified flag from the API.
-// For old standups without the flag (saved before classifier was added), falls
-// back to a lightweight word-boundary heuristic as a best-effort legacy path.
-function _isRealBlocker(standupOrText){
-  // New path: API provides has_real_blocker boolean (LLM-classified)
-  if(typeof standupOrText === 'object' && standupOrText !== null && 'has_real_blocker' in standupOrText && standupOrText.has_real_blocker !== null){
-    return standupOrText.has_real_blocker === true;
-  }
-  // Legacy fallback: accept a text string for old standups missing the flag
-  const text = typeof standupOrText === 'string'
-    ? standupOrText
-    : (standupOrText && standupOrText.blockers) || '';
-  if(!text) return false;
-  const t = String(text).toLowerCase().trim();
-  if(!t || t === '—') return false;
-  // Word-boundary patterns (avoid "na" matching "manager" substring bug)
-  const noBlockerPatterns = [
-    /\bno blockers?\b/, /\bnone\b/, /\ball clear\b/, /\ball good\b/,
-    /\bnothing\b/, /\bno issues?\b/, /\bno problems?\b/,
-    /\bsmooth sailing\b/, /\bn\/a\b/, /\bnope\b/
-  ];
-  for(const re of noBlockerPatterns){ if(re.test(t)) return false; }
-  return true;
-}
-
-function renderStandup(s, idx){
-const dateStr = s.date || '';
-const timeStr = s.completed_at ? new Date(s.completed_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : (s.started_at ? new Date(s.started_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—');
-const dateDisplay = s.completed_at ? new Date(s.completed_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : (s.started_at ? new Date(s.started_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '');
-const badge=s.completed?'<span class="su-badge done">✅ Done</span>':'<span class="su-badge partial">⏳ Partial</span>';
-const jiras=(s.jira_ids||[]).map(id=>`<a class="su-jira" href="${_jiraUrl}/browse/${id}" target="_blank">🎫 ${esc(id)}</a>`).join('');
-const hasBlocker=_isRealBlocker(s);
-const blockerClass=hasBlocker?'su-blocker':'';
-const cardClass=hasBlocker?'su-card has-blocker':'su-card';
-
-// Build one-line preview for collapsed view — prefer LLM-generated summary
-let previewHtml = '';
-if(s.one_line_summary && s.one_line_summary.trim()){
-  // LLM summary (clean prose, generated by background_finalize)
-  const summary = s.one_line_summary.trim();
-  if(hasBlocker){
-    previewHtml = `<div class="su-preview"><span>${esc(summary)}</span></div>`;
-  } else {
-    previewHtml = `<div class="su-preview">${esc(summary)}</div>`;
-  }
-} else {
-  // Fallback: mechanical concatenation (old standups, LLM failure)
-  const previewParts=[];
-  if(s.yesterday)previewParts.push(`<span>${esc(_truncate(s.yesterday,40))}</span>`);
-  if(s.today)previewParts.push(`<span>→ ${esc(_truncate(s.today,40))}</span>`);
-  if(hasBlocker)previewParts.push(`<span class="blocker-chip">⚠️ ${esc(_truncate(s.blockers,30))}</span>`);
-  if(previewParts.length)previewHtml=`<div class="su-preview">${previewParts.join('<span class="sep">•</span>')}</div>`;
-}
-const preview = previewHtml;
-
-const uid=`su-${esc(s.developer)}-${idx||0}`;
-// Render a field — if raw differs from summary, make the whole section clickable
-// to toggle showing the raw text inline below.
-// [v2 — expandable sections with clickable fields]
-function _renderField(label, summary, raw, extraClass, sectionId){
-  const cls = extraClass || '';
-  const showRaw = _showRawToggle(summary, raw);
-  if(!showRaw){
-    // No raw to show — plain section
-    return `<div class="su-section"><div class="su-label">${label}</div><div class="su-text ${cls}">${esc(summary||'—')}</div></div>`;
-  }
-  // Clickable section — uses class + ID, click handler wired up after render
-  return `<div class="su-section expandable" data-expandable="1" id="${sectionId}">
-    <div class="su-label"><span class="expand-arrow">▸</span> ${label}</div>
-    <div class="su-text ${cls}">${esc(summary||'—')}</div>
-    <div class="su-raw"><span class="raw-label">What ${esc(s.developer)} said</span>${esc(raw)}</div>
-  </div>`;
-}
-return`<div class="${cardClass}" id="${uid}">
-<div class="su-head" onclick="document.getElementById('${uid}').classList.toggle('expanded')">
-<div class="su-head-main"><div class="su-name">${esc(s.developer)}</div><div class="su-time">${dateDisplay} ${timeStr}</div>${preview}</div>
-<div>${badge}</div></div>
-<div class="su-body">
-${_renderField('Yesterday', s.yesterday, s.yesterday_raw, '', `${uid}-y`)}
-${_renderField('Today', s.today, s.today_raw, '', `${uid}-t`)}
-${_renderField('Blockers', s.blockers||'No blockers', s.blockers_raw, blockerClass, `${uid}-b`)}
-${jiras?`<div class="su-section"><div class="su-label">Jira Tickets</div><div>${jiras}</div></div>`:''}
-</div></div>`}
-
-// Decide whether to show the "What user said" toggle.
-// Hide if raw is empty, identical to summary, or >=90% word overlap (near-duplicate).
-function _showRawToggle(summary, raw){
-  if(!raw || !summary) return false;
-  const s = String(summary).trim().toLowerCase();
-  const r = String(raw).trim().toLowerCase();
-  if(!r || r === s) return false;
-  // Word-overlap similarity check
-  const sWords = new Set(s.split(/\s+/).filter(Boolean));
-  const rWords = r.split(/\s+/).filter(Boolean);
-  if(!rWords.length) return false;
-  const overlap = rWords.filter(w => sWords.has(w)).length;
-  return (overlap / rWords.length) < 0.9;
-}
-
-// Truncate text at word boundary if possible, else at char limit
-function _truncate(text,max){if(!text)return'';const t=String(text).trim();if(t.length<=max)return t;const cut=t.slice(0,max);const lastSpace=cut.lastIndexOf(' ');return(lastSpace>max*0.6?cut.slice(0,lastSpace):cut)+'…'}
-
-function showMsg(el,text,type){el.textContent=text;el.className=`msg ${type}`;el.style.display='block';setTimeout(()=>{el.style.display='none'},8000)}
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
-
-/* ── Phase 3: Meeting Setup Panel ───────────────────────────────────── */
-
-let _setupOpen = false;
-let _agendaItems = [];   // [{id, title}]
-let _tickets = [];       // [{key, summary, status}]
-let _tickSearchTimer = null;
-let _tickSearchAbort = null;
-let _priorContextTimer = null;
-let _priorContextOpen = false;
-let _currentTemplates = [];  // loaded from /api/agenda_templates
-
-function toggleSetup(){
-  _setupOpen = !_setupOpen;
-  document.getElementById('setup-card').classList.toggle('open', _setupOpen);
-  if(_setupOpen && _currentTemplates.length === 0) loadTemplatesList();
-}
-
-function _nextAgId(){ return 'ag_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
-
-function _renderAgenda(){
-  const list = document.getElementById('ag-list');
-  list.innerHTML = _agendaItems.map((item, i) => `
-    <div class="ag-item">
-      <span class="ag-num">${i+1}.</span>
-      <input type="text" value="${esc(item.title)}" placeholder="Topic title"
-             oninput="_updateAgendaTitle('${item.id}', this.value)"
-             onkeydown="if(event.key==='Enter'){event.preventDefault();addAgendaItem()}">
-      <button class="ag-del" onclick="removeAgendaItem('${item.id}')" title="Remove">×</button>
-    </div>
-  `).join('');
-  _updateSetupBadge();
-}
-
-function addAgendaItem(title){
-  _agendaItems.push({id: _nextAgId(), title: title || ''});
-  _renderAgenda();
-  // Focus the newly added input
-  setTimeout(() => {
-    const inputs = document.querySelectorAll('.ag-item input');
-    if(inputs.length) inputs[inputs.length - 1].focus();
-  }, 0);
-}
-
-function removeAgendaItem(id){
-  _agendaItems = _agendaItems.filter(it => it.id !== id);
-  _renderAgenda();
-}
-
-function _updateAgendaTitle(id, value){
-  const it = _agendaItems.find(x => x.id === id);
-  if(it){ it.title = value; _updateSetupBadge(); }
-}
-
-/* Ticket picker */
-
-function _renderTickets(){
-  const chips = document.getElementById('tk-chips');
-  chips.innerHTML = _tickets.map(t => `
-    <span class="tk-chip">${esc(t.key)}
-      <button onclick="removeTicket('${esc(t.key)}')" title="Remove">×</button>
-    </span>
-  `).join('');
-  _updateSetupBadge();
-}
-
-function addTicket(t){
-  if(!t || !t.key) return;
-  if(_tickets.some(x => x.key === t.key)) return;  // already added
-  _tickets.push({key: t.key, summary: t.summary || '', status: t.status || ''});
-  _renderTickets();
-  // Clear search
-  const inp = document.getElementById('tk-input');
-  inp.value = '';
-  document.getElementById('tk-results').classList.remove('show');
-}
-
-function removeTicket(key){
-  _tickets = _tickets.filter(t => t.key !== key);
-  _renderTickets();
-}
-
-// Debounced live Jira search
-function _setupTicketSearch(){
-  const inp = document.getElementById('tk-input');
-  if(!inp) return;
-  inp.addEventListener('input', () => {
-    clearTimeout(_tickSearchTimer);
-    const q = inp.value.trim();
-    if(q.length < 2){
-      document.getElementById('tk-results').classList.remove('show');
-      return;
-    }
-    _tickSearchTimer = setTimeout(() => _runTicketSearch(q), 300);
-  });
-  inp.addEventListener('keydown', e => {
-    if(e.key === 'Escape'){
-      document.getElementById('tk-results').classList.remove('show');
-    }
-    if(e.key === 'Enter'){
-      e.preventDefault();
-      // If exactly one result visible, add it
-      const active = document.querySelector('.tk-result.active') || document.querySelector('.tk-result');
-      if(active){
-        const key = active.getAttribute('data-key');
-        const t = _lastTicketResults.find(x => x.key === key);
-        if(t) addTicket(t);
-      }
-    }
-  });
-  // Click outside closes dropdown
-  document.addEventListener('click', e => {
-    if(!e.target.closest('.tk-search')){
-      document.getElementById('tk-results').classList.remove('show');
-    }
-  });
-}
-
-let _lastTicketResults = [];
-async function _runTicketSearch(q){
-  const box = document.getElementById('tk-results');
-  // Show loading state
-  box.innerHTML = '<div class="tk-empty">Searching Jira...</div>';
-  box.classList.add('show');
-  try{
-    // Abort previous search
-    if(_tickSearchAbort) _tickSearchAbort.abort();
-    _tickSearchAbort = new AbortController();
-    const r = await fetch('/api/jira/search?q=' + encodeURIComponent(q), {
-      headers: {'Authorization': 'Bearer ' + (localStorage.getItem('sam_token')||'')},
-      signal: _tickSearchAbort.signal,
-    });
-    if(!r.ok){ box.innerHTML = '<div class="tk-empty">Search failed</div>'; return; }
-    const d = await r.json();
-    const results = (d.results || []).filter(t => !_tickets.some(x => x.key === t.key));
-    _lastTicketResults = results;
-    if(!results.length){
-      const errMsg = d.error ? `No matches (error: ${d.error})` : 'No matching tickets';
-      box.innerHTML = `<div class="tk-empty">${esc(errMsg)}</div>`;
-      return;
-    }
-    box.innerHTML = results.map(t => `
-      <div class="tk-result" data-key="${esc(t.key)}" onclick='addTicket(${JSON.stringify(t).replace(/'/g,"&#39;")})'>
-        <div><span class="tk-k">${esc(t.key)}</span></div>
-        <div class="tk-s">${esc(t.summary || '')}</div>
-        <div class="tk-meta">${esc(t.status || '')} ${t.assignee ? '· ' + esc(t.assignee) : ''}</div>
-      </div>
-    `).join('');
-  }catch(e){
-    if(e.name === 'AbortError') return;
-    box.innerHTML = '<div class="tk-empty">Error: ' + esc(e.message || 'unknown') + '</div>';
-  }
-}
-
-/* Prior context */
-
-function debouncePriorContext(){
-  clearTimeout(_priorContextTimer);
-  _priorContextTimer = setTimeout(_runPriorContext, 500);
-}
-
-async function _runPriorContext(){
-  const raw = document.getElementById('participants-input').value.trim();
-  const box = document.getElementById('pc-box');
-  if(!raw){ box.style.display = 'none'; return; }
-  const parts = raw.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
-  if(parts.length === 0){ box.style.display = 'none'; return; }
-  try{
-    const r = await fetch('/api/prior_context?participants=' + encodeURIComponent(parts.join(',')), {
-      headers: {'Authorization': 'Bearer ' + (localStorage.getItem('sam_token')||'')},
-    });
-    if(!r.ok){ box.style.display = 'none'; return; }
-    const d = await r.json();
-    const summaries = d.summaries || [];
-    if(!summaries.length){ box.style.display = 'none'; return; }
-    document.getElementById('pc-title').textContent = `📜 Prior context (${summaries.length})`;
-    document.getElementById('pc-body').innerHTML = summaries.map(s => `
-      <div class="pc-sum">
-        <div class="pc-date">${esc(s.date || s.created_at || '—')}</div>
-        ${_formatPriorSummary(s)}
-      </div>
-    `).join('');
-    box.style.display = 'block';
-  }catch(e){ box.style.display = 'none'; }
-}
-
-function _formatPriorSummary(s){
-  // summary can come in many shapes depending on Feature 4 Memory version:
-  //   - plain string in s.summary or s.text
-  //   - dict with .text / .content / .narrative / .bullets / .key_points
-  //   - unknown → pretty-print JSON
-  try {
-    // Direct string fields
-    if (typeof s.summary === 'string' && s.summary.trim()) return esc(s.summary);
-    if (typeof s.text === 'string' && s.text.trim()) return esc(s.text);
-    // Nested object: s.summary is a dict, OR look at s itself
-    const obj = (s.summary && typeof s.summary === 'object') ? s.summary : s;
-    // Try common text fields inside
-    const text = obj.text || obj.content || obj.narrative || obj.description;
-    if (typeof text === 'string' && text.trim()) return esc(text);
-    // Try bullet-list fields
-    const bullets = obj.bullets || obj.key_points || obj.points || obj.highlights;
-    if (Array.isArray(bullets) && bullets.length) {
-      return bullets.map(b => '• ' + esc(typeof b === 'string' ? b : JSON.stringify(b)))
-                    .join('<br>');
-    }
-    // Fallback: pretty-print unknown shape so user can at least see what's there
-    return '<pre style="margin:0;white-space:pre-wrap;font-size:11px;color:var(--text2);max-height:120px;overflow-y:auto">'
-           + esc(JSON.stringify(obj, null, 2)) + '</pre>';
-  } catch (e) {
-    return '<em>(failed to render: ' + esc(e.message || 'unknown') + ')</em>';
-  }
-}
-
-function togglePriorContext(){
-  _priorContextOpen = !_priorContextOpen;
-  document.getElementById('pc-box').classList.toggle('open', _priorContextOpen);
-}
-
-/* Templates */
-
-async function loadTemplatesList(){
-  try{
-    const d = await api('GET', '/api/agenda_templates');
-    if(!d) return;
-    _currentTemplates = d.templates || [];
-    const sel = document.getElementById('tpl-select');
-    sel.innerHTML = '<option value="">— Select template to load —</option>' +
-      _currentTemplates.map(t => `<option value="${esc(t.name)}">${esc(t.name)}</option>`).join('');
-  }catch(e){ /* silent */ }
-}
-
-function loadTemplate(name){
-  if(!name) return;
-  const t = _currentTemplates.find(x => x.name === name);
-  if(!t) return;
-  // Populate agenda
-  _agendaItems = (t.agenda || []).map((a, i) => ({
-    id: _nextAgId(),
-    title: typeof a === 'string' ? a : (a.title || ''),
-  }));
-  _renderAgenda();
-  // Populate tickets (as chips, without full summaries — backend will fetch if needed)
-  _tickets = (t.ticket_keys || []).map(k => ({key: k, summary: '', status: ''}));
-  _renderTickets();
-  // Scope
-  document.getElementById('scope-in').value = (t.scope_in || []).join(', ');
-  document.getElementById('scope-out').value = (t.scope_out || []).join(', ');
-}
-
-function toggleSaveTemplate(){
-  const row = document.getElementById('tpl-save-row');
-  row.classList.toggle('hidden');
-  if(!row.classList.contains('hidden')){
-    document.getElementById('tpl-save-name').focus();
-  }
-}
-
-async function saveTemplate(){
-  const name = document.getElementById('tpl-save-name').value.trim();
-  const m = document.getElementById('ctrl-msg');
-  if(!name){ showMsg(m, 'Template name required', 'err'); return; }
-  const payload = {
-    name: name,
-    agenda: _agendaItems.filter(a => a.title.trim()).map(a => ({title: a.title.trim()})),
-    scope_in: _parseCommaList('scope-in'),
-    scope_out: _parseCommaList('scope-out'),
-    ticket_keys: _tickets.map(t => t.key),
-  };
-  try{
-    const d = await api('POST', '/api/agenda_templates/save', payload);
-    if(d && d.ok){
-      showMsg(m, `Template "${name}" saved`, 'ok');
-      document.getElementById('tpl-save-name').value = '';
-      toggleSaveTemplate();
-      await loadTemplatesList();
-      document.getElementById('tpl-select').value = name;
-    } else {
-      showMsg(m, d?.error || 'Save failed', 'err');
-    }
-  }catch(e){ showMsg(m, 'Save failed', 'err'); }
-}
-
-async function deleteTemplate(){
-  const sel = document.getElementById('tpl-select');
-  const name = sel.value;
-  const m = document.getElementById('ctrl-msg');
-  if(!name){ showMsg(m, 'Select a template first', 'err'); return; }
-  if(!confirm(`Delete template "${name}"?`)) return;
-  try{
-    const token = localStorage.getItem('sam_token') || '';
-    const r = await fetch('/api/agenda_templates/' + encodeURIComponent(name), {
-      method: 'DELETE',
-      headers: {'Authorization': 'Bearer ' + token},
-    });
-    const d = await r.json();
-    if(d && d.ok){
-      showMsg(m, `Template "${name}" deleted`, 'ok');
-      sel.value = '';
-      await loadTemplatesList();
-    } else {
-      showMsg(m, d?.error || 'Delete failed', 'err');
-    }
-  }catch(e){ showMsg(m, 'Delete failed', 'err'); }
-}
-
-/* Helpers */
-
-function _parseCommaList(elementId){
-  const v = (document.getElementById(elementId).value || '').trim();
-  if(!v) return [];
-  return v.split(',').map(s => s.trim()).filter(Boolean);
-}
-
-function _updateSetupBadge(){
-  const badge = document.getElementById('setup-badge');
-  if(!badge) return;
-  const hasAgenda = _agendaItems.some(a => a.title.trim());
-  const hasTickets = _tickets.length > 0;
-  const hasScope = _parseCommaList('scope-in').length > 0 || _parseCommaList('scope-out').length > 0;
-  if(hasAgenda || hasTickets || hasScope){
-    const counts = [];
-    if(hasAgenda) counts.push(`${_agendaItems.filter(a => a.title.trim()).length} topics`);
-    if(hasTickets) counts.push(`${_tickets.length} tickets`);
-    if(hasScope) counts.push('scope');
-    badge.textContent = counts.join(' · ');
-    badge.style.background = 'var(--gglow)';
-    badge.style.color = 'var(--green)';
-  } else {
-    badge.textContent = 'Optional';
-    badge.style.background = '';
-    badge.style.color = '';
-  }
-}
-
-// ── Client research (Know About Them) state ────────────────────────────────
-let _clientProfileSaved = "";   // verified text user clicked "Save profile" on
-let _clientFieldsAtSave = "";   // names captured at save time (for staleness detection)
-
-function _onClientFieldsChanged(){
-  const cn = document.getElementById('client-names-input').value.trim();
-  const co = document.getElementById('company-names-input').value.trim();
-  // Enable button only when at least one field is non-empty
-  document.getElementById('know-about-btn').disabled = !(cn || co);
-
-  // Soft staleness warning — saved profile may be outdated if names changed
-  const status = document.getElementById('cp-status');
-  if(_clientProfileSaved){
-    const currentSig = `${cn}|${co}`;
-    if(currentSig !== _clientFieldsAtSave){
-      status.textContent = "⚠️ Names changed — saved profile may be stale. Re-fetch?";
-      status.style.color = "#d29922";
-    }else{
-      status.textContent = `✓ Profile saved (${_clientProfileSaved.split(/\s+/).filter(Boolean).length} words)`;
-      status.style.color = "#2ea043";
-    }
-  }
-}
-
-async function researchClients(){
-  const cn = document.getElementById('client-names-input').value.trim();
-  const co = document.getElementById('company-names-input').value.trim();
-  if(!cn && !co){
-    alert('Please enter at least one client name or company name.');
-    return;
-  }
-
-  const btn = document.getElementById('know-about-btn');
-  const status = document.getElementById('cp-status');
-  const resultBox = document.getElementById('cp-result');
-  const ta = document.getElementById('cp-textarea');
-
-  btn.disabled = true;
-  btn.textContent = '🔎 Researching...';
-  status.textContent = 'Calling Google AI Mode...';
-  status.style.color = 'var(--muted)';
-  resultBox.style.display = 'none';
-
-  try{
-    const token = localStorage.getItem('sam_token') || '';
-    const r = await fetch('/api/clients/research', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token,
-      },
-      body: JSON.stringify({client_names: cn, company_names: co}),
-    });
-    const data = await r.json();
-
-    if(!r.ok){
-      status.textContent = '❌ ' + (data.error || 'Research failed');
-      status.style.color = '#f85149';
-      btn.disabled = false;
-      btn.textContent = '🔎 Know About Them';
-      return;
-    }
-
-    if(data.warning){
-      status.textContent = '⚠️ ' + data.warning;
-      status.style.color = '#d29922';
-    }else{
-      status.textContent = `✓ Got profile (${data.word_count} words). Review and edit, then click Save.`;
-      status.style.color = '#2ea043';
-    }
-
-    ta.value = data.profile_text || '';
-    resultBox.style.display = '';
-    _updateWordCount();
-
-    // Show diagnostic block — what fields Google AI Mode actually returned
-    const diagBox = document.getElementById('cp-diagnostic');
-    if(data.diagnostic){
-      const d = data.diagnostic;
-      const keysStr = (d.top_keys || []).join(', ') || '(none)';
-      const lines = [
-        `🔍 SerpAPI fields returned: [${keysStr}]`,
-        `📊 Extraction strategy: ${d.extraction_strategy || 'none'}`,
-        `⏱ Latency: ${d.latency_ms || '?'}ms`,
-      ];
-      if(d.reference_count !== undefined){
-        lines.push(`📚 References-only response (${d.reference_count} citations, no synthesis)`);
-      }
-      if(d.debug_file){
-        lines.push(`💾 Full JSON saved on server: ${d.debug_file}`);
-      }
-      diagBox.innerHTML = lines.map(l => esc(l)).join('<br>');
-      diagBox.style.display = '';
-    }else{
-      diagBox.style.display = 'none';
-    }
-
-    btn.disabled = false;
-    btn.textContent = '🔎 Know About Them';
-  }catch(e){
-    status.textContent = '❌ Network error: ' + e.message;
-    status.style.color = '#f85149';
-    btn.disabled = false;
-    btn.textContent = '🔎 Know About Them';
-  }
-}
-
-function _updateWordCount(){
-  const ta = document.getElementById('cp-textarea');
-  const wc = document.getElementById('cp-wordcount');
-  const words = ta.value.trim().split(/\s+/).filter(Boolean);
-  const n = words.length;
-  wc.textContent = `${n} / 300 words`;
-  if(n > 300){
-    wc.style.color = '#f85149';
-  }else if(n > 250){
-    wc.style.color = '#d29922';
-  }else{
-    wc.style.color = 'var(--muted)';
-  }
-}
-
-function _onProfileEdited(){
-  const ta = document.getElementById('cp-textarea');
-  // Hard cap at 300 words client-side (truncate excess, keep cursor sensible)
-  const words = ta.value.trim().split(/\s+/).filter(Boolean);
-  if(words.length > 300){
-    ta.value = words.slice(0, 300).join(' ');
-  }
-  _updateWordCount();
-}
-
-function saveClientProfile(){
-  const ta = document.getElementById('cp-textarea');
-  const text = ta.value.trim();
-  if(!text){
-    alert('Profile is empty. Click "Try again" or write something first.');
-    return;
-  }
-  _clientProfileSaved = text;
-  const cn = document.getElementById('client-names-input').value.trim();
-  const co = document.getElementById('company-names-input').value.trim();
-  _clientFieldsAtSave = `${cn}|${co}`;
-
-  const status = document.getElementById('cp-status');
-  const wc = text.split(/\s+/).filter(Boolean).length;
-  status.textContent = `✓ Profile saved (${wc} words) — will be sent to Sam when you start the meeting`;
-  status.style.color = '#2ea043';
-  _updateSetupBadge();
-}
-
-function clearClientProfile(){
-  _clientProfileSaved = "";
-  _clientFieldsAtSave = "";
-  document.getElementById('cp-textarea').value = '';
-  document.getElementById('cp-result').style.display = 'none';
-  document.getElementById('cp-status').textContent = '';
-  _updateWordCount();
-  _updateSetupBadge();
-}
-
-function _gatherSetup(){
-  const agenda = _agendaItems
-    .filter(a => a.title.trim())
-    .map((a, i) => ({id: `topic_${i+1}`, title: a.title.trim(), status: 'pending'}));
-  const scopeIn = _parseCommaList('scope-in');
-  const scopeOut = _parseCommaList('scope-out');
-  const ticketKeys = _tickets.map(t => t.key);
-  const duration = parseInt(document.getElementById('duration-min').value, 10) || 30;
-  const participantsRaw = document.getElementById('participants-input').value.trim();
-  const participants = participantsRaw
-    ? participantsRaw.split(/[,\n]/).map(s => s.trim()).filter(Boolean)
-    : [];
-  const clientProfile = (_clientProfileSaved || "").trim();
-  // Return {} if nothing filled in — backend treats empty as "no setup"
-  if(!agenda.length && !scopeIn.length && !scopeOut.length && !ticketKeys.length && !clientProfile){
-    return null;
-  }
-  return {
-    agenda: agenda,
-    scope_in: scopeIn,
-    scope_out: scopeOut,
-    ticket_keys: ticketKeys,
-    planned_duration_minutes: duration,
-    expected_participants: participants,
-    client_profile: clientProfile,
-  };
-}
-
-// Initialize setup panel on DOMContentLoaded (fires once)
-document.addEventListener('DOMContentLoaded', () => {
-  // Render empty agenda list placeholder
-  _renderAgenda();
-  _renderTickets();
-  _setupTicketSearch();
-  // Update badge whenever scope inputs change
-  ['scope-in', 'scope-out'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.addEventListener('input', _updateSetupBadge);
-  });
-});
-
-</script>
-
-<!-- Phase 6 step 1: Commitment tracking panel (injected) -->
-<style>
-  #commitments-panel {
-    margin: 12px 0;
-    padding: 12px;
-    background: var(--bg2, #f9fafb);
-    border: 1px solid var(--border, #e5e7eb);
-    border-radius: 8px;
-    font-size: 13px;
-  }
-  #commitments-panel h3 {
-    margin: 0 0 8px 0;
-    font-size: 14px;
-    cursor: pointer;
-    user-select: none;
-  }
-  #commitments-panel .cm-body { margin-top: 8px; }
-  #commitments-panel.collapsed .cm-body { display: none; }
-  #commitments-panel .cm-item {
-    padding: 8px 10px;
-    margin: 6px 0;
-    background: var(--bg, #fff);
-    border-left: 3px solid #16a34a;
-    border-radius: 4px;
-  }
-  #commitments-panel .cm-owner { font-weight: 600; color: var(--text, #111); }
-  #commitments-panel .cm-action { color: var(--text2, #444); margin: 2px 0; }
-  #commitments-panel .cm-deadline { font-size: 11px; color: var(--text3, #888); }
-  #commitments-panel .cm-empty { color: var(--text3, #888); font-style: italic; }
-  #commitments-panel .cm-error { color: #dc2626; font-size: 12px; }
-  #commitments-panel .cm-refresh {
-    float: right; font-size: 11px; background: none;
-    border: 1px solid var(--border, #e5e7eb); border-radius: 4px;
-    padding: 2px 8px; cursor: pointer; color: var(--text2, #555);
-  }
-  #commitments-panel .cm-refresh:hover { background: var(--bg2, #f3f4f6); }
-</style>
-
-<div id="commitments-panel" class="collapsed">
-  <h3 onclick="toggleCommitments()">
-    <span id="cm-title">📝 Commitments (0)</span>
-    <button class="cm-refresh" onclick="event.stopPropagation(); _refreshCommitments()">↻ Refresh</button>
-  </h3>
-  <div class="cm-body" id="cm-body">
-    <div class="cm-empty">No commitments captured yet.</div>
-  </div>
-</div>
-
-<script>
-(function() {
-  // Phase 6 step 1: poll commitments during active session
-  let _cmPollInterval = null;
-
-  window.toggleCommitments = function() {
-    document.getElementById("commitments-panel").classList.toggle("collapsed");
-  };
-
-  window._refreshCommitments = async function() {
-    // Try to find an active session ID. Multiple places this might live;
-    // check the most common globals first.
-    const sid = window._activeSessionId
-             || (window.currentSession && window.currentSession.session_id)
-             || document.body.dataset.sessionId
-             || null;
-    const panel = document.getElementById("commitments-panel");
-    const body = document.getElementById("cm-body");
-    const title = document.getElementById("cm-title");
-    if (!sid) {
-      // Keep panel visible but show placeholder so user knows it exists
-      title.textContent = "📝 Commitments (—)";
-      body.innerHTML = '<div class="cm-empty">Start a meeting to track commitments here.</div>';
-      return;
-    }
-    try {
-      const token = (typeof localStorage !== "undefined")
-        ? (localStorage.getItem("sam_token") || "") : "";
-      const r = await fetch("/api/commitments/" + encodeURIComponent(sid), {
-        headers: token ? { "Authorization": "Bearer " + token } : {}
-      });
-      if (!r.ok) {
-        body.innerHTML = '<div class="cm-error">Request failed: ' + r.status + '</div>';
-        return;
-      }
-      const d = await r.json();
-      const items = (d.commitments || []).filter(c => (c.status || "open") === "open");
-      title.textContent = "📝 Commitments (" + items.length + ")";
-      if (items.length === 0) {
-        body.innerHTML = '<div class="cm-empty">No commitments captured yet.</div>';
-      } else {
-        const rows = items.map(function(c) {
-          const owner = String(c.owner || "Unknown").replace(/[<>&"]/g, "");
-          const action = String(c.action || "").replace(/[<>&"]/g, "");
-          const deadline = c.deadline
-            ? '<div class="cm-deadline">due: ' + String(c.deadline).replace(/[<>&"]/g, "") + '</div>'
-            : '<div class="cm-deadline">no deadline</div>';
-          return '<div class="cm-item">'
-               + '<span class="cm-owner">' + owner + '</span>'
-               + '<div class="cm-action">' + action + '</div>'
-               + deadline
-               + '</div>';
-        }).join("");
-        body.innerHTML = rows;
-      }
-      // Show the panel only when we have an active session context
-      panel.style.display = "block";
-    } catch (e) {
-      body.innerHTML = '<div class="cm-error">Error: ' + (e.message || "unknown") + '</div>';
-    }
-  };
-
-  window._startCommitmentPolling = function() {
-    if (_cmPollInterval) return;
-    _refreshCommitments();  // immediate fetch
-    _cmPollInterval = setInterval(_refreshCommitments, 10000);  // every 10s
-  };
-  window._stopCommitmentPolling = function() {
-    if (_cmPollInterval) {
-      clearInterval(_cmPollInterval);
-      _cmPollInterval = null;
-    }
-    // Reset to placeholder state instead of hiding (so panel stays discoverable)
-    const title = document.getElementById("cm-title");
-    const body = document.getElementById("cm-body");
-    if (title) title.textContent = "📝 Commitments (—)";
-    if (body) body.innerHTML = '<div class="cm-empty">Start a meeting to track commitments here.</div>';
-  };
-
-  // Auto-start polling if window._activeSessionId is already set
-  // (e.g. page loaded while session is running). Also, wire to any
-  // existing deploy success path by checking periodically.
-  setInterval(function() {
-    const sid = window._activeSessionId
-             || (window.currentSession && window.currentSession.session_id)
-             || document.body.dataset.sessionId;
-    if (sid && !_cmPollInterval) _startCommitmentPolling();
-    else if (!sid && _cmPollInterval) _stopCommitmentPolling();
-  }, 3000);
-
-  // Initial render so the panel shows the placeholder immediately on page load
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", _refreshCommitments);
-  } else {
-    _refreshCommitments();
-  }
-})();
-</script>
-
-</body>
-</html>
+"""
+groq_client.py — auto-generated by consolidate_to_folder.py
+
+This file is a concatenation of:
+    • groq_key_rotator.py  (GROQ KEY ROTATOR)
+    • groq_rotating_client.py  (GROQ ROTATING CLIENT + SHARED SINGLETON)
+
+Do not edit the section headers below — they mark original file
+boundaries for easier debugging.
+"""
+
+
+
+###########################################################################
+# ─── GROQ KEY ROTATOR  (was: groq_key_rotator.py)
+###########################################################################
+
+"""
+groq_key_rotator.py — Round-robin rotation across multiple Groq API keys
+
+Purpose:
+    Groq's rate limits (6000 TPM on free tier) are per-organization. If you
+    own multiple Groq accounts with their own keys, you can spread load across
+    them for higher effective throughput.
+
+Usage:
+    # In .env:
+    #   GROQ_API_KEYS=gsk_key1,gsk_key2,gsk_key3
+    # Or single key (backward-compatible):
+    #   GROQ_API_KEY=gsk_single_key
+
+    rotator = GroqKeyRotator()
+    key = rotator.get_next_key()  # round-robin next available key
+    if not key:
+        # all keys are rate-limited, use Azure
+        ...
+    # Make request with key
+    # On 429:
+    rotator.mark_rate_limited(key)
+    # On success:
+    # (nothing needed — success doesn't affect rotation)
+
+Design:
+    - Round-robin: even distribution across keys
+    - Cooldown: 429'd keys are skipped for 60s (Groq TPM resets per minute)
+    - Thread-safe via asyncio.Lock for the rotation pointer
+    - Transparent: if only one key configured, behaves like single-key
+
+Ethical note:
+    This pattern is legitimate ONLY if all keys belong to accounts YOU own
+    and operate. Creating sock-puppet accounts to evade rate limits violates
+    Groq's Terms of Service. Ensure the keys you provide are your own.
+"""
+
+import asyncio
+import os
+import time
+from dataclasses import dataclass, field
+from typing import Optional
+
+
+# How long to skip a key after it returned 429 (seconds).
+# Groq TPM limits reset every 60s, so 60s is the minimum needed.
+# A small buffer (5s) helps account for clock skew.
+RATE_LIMIT_COOLDOWN_SECONDS = 65.0
+
+# How many consecutive non-429 errors before we consider a key "broken" and
+# skip it longer. Protects against bad keys that return 401/403 repeatedly.
+BAD_KEY_ERROR_THRESHOLD = 3
+BAD_KEY_COOLDOWN_SECONDS = 300.0  # 5 minutes
+
+
+@dataclass
+class KeyStatus:
+    """Tracks health of a single API key."""
+    key: str
+    label: str                              # display label like "key_1"
+    rate_limited_until: float = 0.0         # unix timestamp; 0 = not limited
+    consecutive_errors: int = 0             # non-429 errors in a row
+    bad_until: float = 0.0                  # cooldown for non-429 failures
+    total_success: int = 0
+    total_rate_limited: int = 0
+    total_errors: int = 0
+
+    def is_available(self) -> bool:
+        """True if this key can be used right now."""
+        now = time.time()
+        return now >= self.rate_limited_until and now >= self.bad_until
+
+    def cooldown_remaining(self) -> float:
+        """Seconds until this key becomes available again."""
+        now = time.time()
+        until = max(self.rate_limited_until, self.bad_until)
+        return max(0.0, until - now)
+
+
+class GroqKeyRotator:
+    """Round-robin rotation across multiple Groq API keys.
+
+    Picks the next available (not-rate-limited) key. Skips cooling-down keys.
+    If all keys are cooling down, returns None (caller should fall back to Azure).
+    """
+
+    def __init__(self, tag: str = ""):
+        self.tag = tag
+
+        # Load keys from env:
+        # - GROQ_API_KEYS (comma-separated, new multi-key format)
+        # - GROQ_API_KEY  (single key, backward-compatible)
+        keys = self._load_keys_from_env()
+
+        self._keys: list[KeyStatus] = [
+            KeyStatus(key=k, label=f"groq_{i+1}")
+            for i, k in enumerate(keys)
+        ]
+        self._rotation_index: int = 0
+        self._lock = asyncio.Lock()
+
+        if not self._keys:
+            print(f"[GroqRotator] {self.tag} ⚠️  No Groq keys configured "
+                  f"(set GROQ_API_KEYS or GROQ_API_KEY in .env)")
+        else:
+            print(f"[GroqRotator] {self.tag} ✅ Loaded {len(self._keys)} Groq key(s) "
+                  f"(~{len(self._keys) * 6000:,} TPM effective capacity)")
+
+    # ── Configuration loading ───────────────────────────────────────────
+
+    def _load_keys_from_env(self) -> list[str]:
+        """Load keys from env, preferring multi-key format.
+
+        Stage R: delegates to the shared key_rotator.load_keys() so all
+        services use the same env-var convention (GROQ_API_KEYS plural,
+        GROQ_API_KEY singular, plus legacy numbered variants if any).
+        Internal GroqRotator health tracking stays unchanged — we just
+        reuse the parsing logic.
+        """
+        try:
+            from key_rotator import load_keys as _kr_load_keys
+            return _kr_load_keys("GROQ")
+        except Exception:
+            pass
+
+        # Defensive fallback to legacy inline parsing if key_rotator import
+        # ever fails (e.g. circular import during early bootstrap).
+        keys: list[str] = []
+        multi = os.environ.get("GROQ_API_KEYS", "").strip()
+        if multi:
+            keys = [k.strip() for k in multi.split(",") if k.strip()]
+        if not keys:
+            single = os.environ.get("GROQ_API_KEY", "").strip()
+            if single:
+                keys = [single]
+        seen = set()
+        unique = []
+        for k in keys:
+            if k not in seen:
+                seen.add(k)
+                unique.append(k)
+        return unique
+
+    # ── Public API ──────────────────────────────────────────────────────
+
+    def is_enabled(self) -> bool:
+        """True if any keys are configured."""
+        return len(self._keys) > 0
+
+    def get_key_count(self) -> int:
+        return len(self._keys)
+
+    async def get_next_key(self) -> Optional[tuple[str, str]]:
+        """Return the next available (key, label) pair, or None if all cooling down.
+
+        Rotation: goes through keys in order, skipping any that are cooling down.
+        Returns after finding the first available one (advances pointer).
+        """
+        if not self._keys:
+            return None
+
+        async with self._lock:
+            n = len(self._keys)
+            # Try up to n keys starting from current rotation index
+            for offset in range(n):
+                idx = (self._rotation_index + offset) % n
+                ks = self._keys[idx]
+                if ks.is_available():
+                    # Advance pointer past this key so NEXT call uses the one after
+                    self._rotation_index = (idx + 1) % n
+                    return (ks.key, ks.label)
+
+            # All keys cooling down
+            return None
+
+    async def mark_rate_limited(self, key: str) -> None:
+        """Mark a key as rate-limited. It will be skipped for RATE_LIMIT_COOLDOWN_SECONDS."""
+        async with self._lock:
+            ks = self._find_key(key)
+            if not ks:
+                return
+            ks.rate_limited_until = time.time() + RATE_LIMIT_COOLDOWN_SECONDS
+            ks.total_rate_limited += 1
+            ks.consecutive_errors = 0  # 429 doesn't count as broken
+            print(f"[GroqRotator] {self.tag} ⏱️  {ks.label} rate-limited "
+                  f"(cooldown {RATE_LIMIT_COOLDOWN_SECONDS:.0f}s, "
+                  f"{self._count_available_locked()}/{len(self._keys)} available)")
+
+    async def mark_error(self, key: str) -> None:
+        """Mark a generic error (non-429) on a key.
+
+        After BAD_KEY_ERROR_THRESHOLD consecutive errors, key goes on longer cooldown.
+        """
+        async with self._lock:
+            ks = self._find_key(key)
+            if not ks:
+                return
+            ks.consecutive_errors += 1
+            ks.total_errors += 1
+            if ks.consecutive_errors >= BAD_KEY_ERROR_THRESHOLD:
+                ks.bad_until = time.time() + BAD_KEY_COOLDOWN_SECONDS
+                ks.consecutive_errors = 0
+                print(f"[GroqRotator] {self.tag} ⚠️  {ks.label} disabled "
+                      f"({BAD_KEY_ERROR_THRESHOLD} consecutive errors, "
+                      f"cooldown {BAD_KEY_COOLDOWN_SECONDS:.0f}s)")
+
+    async def mark_success(self, key: str) -> None:
+        """Mark successful use of a key. Resets consecutive error counter."""
+        async with self._lock:
+            ks = self._find_key(key)
+            if not ks:
+                return
+            ks.total_success += 1
+            ks.consecutive_errors = 0
+
+    def get_stats(self) -> dict:
+        """Return usage stats per key."""
+        return {
+            "total_keys": len(self._keys),
+            "available_now": sum(1 for k in self._keys if k.is_available()),
+            "per_key": [
+                {
+                    "label": k.label,
+                    "success": k.total_success,
+                    "rate_limited": k.total_rate_limited,
+                    "errors": k.total_errors,
+                    "available": k.is_available(),
+                    "cooldown_remaining": round(k.cooldown_remaining(), 1),
+                }
+                for k in self._keys
+            ],
+        }
+
+    # ── Internal helpers ────────────────────────────────────────────────
+
+    def _find_key(self, key: str) -> Optional[KeyStatus]:
+        """Find KeyStatus by raw key string. Caller must hold lock."""
+        for ks in self._keys:
+            if ks.key == key:
+                return ks
+        return None
+
+    def _count_available_locked(self) -> int:
+        """Count available keys — must be called while holding lock."""
+        return sum(1 for k in self._keys if k.is_available())
+
+###########################################################################
+# ─── GROQ ROTATING CLIENT + SHARED SINGLETON  (was: groq_rotating_client.py)
+###########################################################################
+
+"""
+groq_rotating_client.py — Drop-in AsyncOpenAI replacement with key rotation
+
+Purpose:
+    Existing code uses `AsyncOpenAI(api_key=...)` to talk to Groq. With a
+    single key, you hit 6,000 TPM limits fast. With 12 keys, you have 72,000
+    TPM but the vanilla client can only hold one key at a time.
+
+    This wrapper mimics the parts of AsyncOpenAI the codebase uses and
+    rotates across keys via groq_key_rotator.GroqKeyRotator. On 429, it
+    marks the key cooling and retries with the next available one.
+
+Usage (drop-in replacement):
+    # Before:
+    self.client = AsyncOpenAI(
+        api_key=os.environ["GROQ_API_KEY"],
+        base_url="https://api.groq.com/openai/v1",
+    )
+
+    # After:
+    self.client = GroqRotatingClient(tag="[Agent]")
+
+    # All .chat.completions.create(...) calls work unchanged.
+    # Streaming (stream=True) works unchanged.
+
+Shared rotator:
+    get_shared_groq_rotator() returns a process-wide singleton rotator so
+    Agent, Trigger, and NLU all draw from the same 12-key pool and share
+    cooldown state. This means: if Agent burns through key #3 with a 429,
+    NLU knows to skip key #3 until it cools down.
+
+Supported operations:
+    - client.chat.completions.create(**kwargs) — both stream=False and stream=True
+    - client.close() — releases cached per-key HTTP connections
+
+Not supported (raise AttributeError if called):
+    - Embeddings, audio, images, etc. (not used in this codebase)
+
+Error semantics:
+    - 429 (RateLimitError) on any key → mark cooling, rotate to next key
+    - If all keys cooling → raises RuntimeError (caller should fall back)
+    - Non-429 errors (network, 5xx, timeout) → mark error, raise immediately
+    - Success → mark success (resets consecutive-error counter)
+"""
+
+import asyncio
+from typing import Optional
+
+import httpx
+from openai import AsyncOpenAI
+from openai import RateLimitError, APIStatusError
+
+
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+
+# ── Connection keepalive configuration ────────────────────────────────────────
+# We use TWO mechanisms to keep TCP connections warm WITHOUT spending API quota:
+#
+# 1. httpx pool keepalive_expiry — keeps a connection in the local pool for N
+#    seconds after last use. If reused within that window, no TCP+TLS handshake.
+#    Cost: zero. Just configuration.
+#
+# 2. TCP-level SO_KEEPALIVE — kernel sends silent TCP keepalive probes on idle
+#    connections. Detects+heals dead sockets before the next HTTP request would
+#    time out. Doesn't keep the connection from closing on Groq's side, but
+#    catches mid-network NAT/proxy resets.
+#    Cost: zero. Kernel-level packets, not API requests.
+#
+# What we DO NOT do anymore: send periodic chat.completions.create() pings to
+# keep keys "warm". On Groq free tier (30 RPM org-wide), 12-key warmup loops
+# burned 24+ req/min just for keepalive, leaving almost nothing for real
+# user traffic. Functions warm_all_keys() and start_keepalive_task() now
+# no-op by default. Set GROQ_KEEPALIVE_API_PINGS=1 to re-enable (only if you
+# upgrade to Groq Dev tier with 300+ RPM).
+KEEPALIVE_EXPIRY_SECONDS = 600.0        # 10 min — covers most proxy idle timeouts
+MAX_KEEPALIVE_CONNECTIONS = 4           # per key — enough for bursts
+CONNECT_TIMEOUT_SECONDS = 10.0
+READ_TIMEOUT_SECONDS = 60.0             # Groq can stream for a while
+
+# TCP-level socket keepalive (Linux/macOS). Sends silent probes on idle sockets.
+TCP_KEEPALIVE_IDLE_SECONDS = 60         # start probing after 60s idle
+TCP_KEEPALIVE_INTERVAL_SECONDS = 30     # probe every 30s
+TCP_KEEPALIVE_PROBE_COUNT = 3           # close after 3 missed probes
+
+# Ping interval (only used if API pings are explicitly re-enabled — see above)
+KEEPALIVE_PING_INTERVAL_SECONDS = 30.0
+KEEPALIVE_PING_MODEL = "llama-3.1-8b-instant"
+
+# Master switch for the OLD API-ping behavior. Default off because it hits
+# Groq free-tier rate limits hard. Re-enable only on Dev tier (300+ RPM).
+import os as _kp_os
+GROQ_KEEPALIVE_API_PINGS = _kp_os.environ.get("GROQ_KEEPALIVE_API_PINGS", "0") == "1"
+
+# ── Module-level shared rotator singleton ─────────────────────────────────────
+# All callers of get_shared_groq_rotator() get the SAME instance. This is how
+# Agent, Trigger, and NLU share a unified view of which keys are available.
+# Created lazily on first access (so env vars are read by then).
+_shared_rotator: Optional[GroqKeyRotator] = None
+
+
+def get_shared_groq_rotator(tag: str = "[shared]") -> GroqKeyRotator:
+    """Return the process-wide shared GroqKeyRotator singleton.
+
+    First caller's tag is used for logging. Subsequent callers get the same
+    instance (their tag is ignored — this is by design for unified state).
+    """
+    global _shared_rotator
+    if _shared_rotator is None:
+        _shared_rotator = GroqKeyRotator(tag=tag)
+    return _shared_rotator
+
+
+# ── Namespace shims (mimic client.chat.completions.create) ────────────────────
+
+class _CompletionsNamespace:
+    """Mimics `client.chat.completions` — exposes `.create()`."""
+
+    def __init__(self, parent: "GroqRotatingClient"):
+        self._parent = parent
+
+    async def create(self, **kwargs):
+        """Forward to parent's rotation logic. Returns what AsyncOpenAI returns."""
+        return await self._parent._create_with_rotation(**kwargs)
+
+
+class _ChatNamespace:
+    """Mimics `client.chat` — exposes `.completions` attribute."""
+
+    def __init__(self, parent: "GroqRotatingClient"):
+        self.completions = _CompletionsNamespace(parent)
+
+
+# ── The rotating client ────────────────────────────────────────────────────────
+
+class GroqRotatingClient:
+    """Drop-in AsyncOpenAI replacement that rotates across multiple Groq keys.
+
+    Compatible surface:
+        client.chat.completions.create(**kwargs)  ← both streaming and non-streaming
+
+    Internal model:
+        - One underlying AsyncOpenAI instance cached per key (HTTP connection reuse)
+        - Each .create() call picks a key from the rotator, calls that key's client
+        - 429 → rotator.mark_rate_limited(key), retry with next key
+        - Other errors → rotator.mark_error(key), raise to caller
+        - Success → rotator.mark_success(key)
+
+    Streaming note:
+        For stream=True, the initial HTTP request runs synchronously before the
+        stream object is returned. 429 on stream open is caught and rotated. A
+        429 mid-stream (rare) will propagate to the iterator consumer — same
+        behavior as today with a single-key AsyncOpenAI.
+    """
+
+    def __init__(
+        self,
+        rotator: Optional[GroqKeyRotator] = None,
+        tag: str = "",
+    ):
+        """Create a rotating client.
+
+        Args:
+            rotator: Custom rotator to use. If None, uses the shared singleton.
+                     Pass your own rotator only if you want an isolated key pool
+                     (e.g., for testing). Default (None) is what you want.
+            tag: Short label for log lines (e.g., "[Agent]", "[Trigger]").
+        """
+        self._rotator = rotator if rotator is not None else get_shared_groq_rotator()
+        self._tag = tag
+        # Per-key client cache — each AsyncOpenAI keeps its own HTTP pool
+        self._clients: dict[str, AsyncOpenAI] = {}
+        # Guards concurrent creation of the same-key client
+        self._clients_lock = asyncio.Lock()
+        # Mimic AsyncOpenAI's nested namespace access
+        self.chat = _ChatNamespace(self)
+        # Background keepalive task (set by start_keepalive_task)
+        self._keepalive_task: Optional[asyncio.Task] = None
+        # Per-key httpx clients (owned by us, passed to AsyncOpenAI)
+        self._http_clients: dict[str, httpx.AsyncClient] = {}
+
+    def _build_httpx_client(self) -> httpx.AsyncClient:
+        """Build a fresh httpx AsyncClient with two layers of keepalive:
+
+        Layer 1 — httpx pool keepalive: sockets stay in the pool for
+        KEEPALIVE_EXPIRY_SECONDS (10 min) after last use, ready for instant
+        reuse with no TCP+TLS handshake.
+
+        Layer 2 — TCP socket keepalive: kernel sends silent TCP probes on idle
+        sockets so dead connections (NAT/proxy timeouts) get detected and
+        evicted from the pool BEFORE the next request hits a stale socket.
+
+        Together these give "warm-feeling" connections without spending any
+        API request quota — critical on Groq's 30 RPM free tier.
+        """
+        # Build a transport that sets SO_KEEPALIVE on every socket it opens.
+        # httpx itself doesn't expose this — we hook it via the underlying
+        # httpcore transport's socket-options parameter.
+        try:
+            import socket
+            socket_options = [
+                # Enable keepalive
+                (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1),
+            ]
+            # Linux-specific TCP_KEEPIDLE/INTVL/CNT (silently skipped on macOS)
+            if hasattr(socket, "TCP_KEEPIDLE"):
+                socket_options.append(
+                    (socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, TCP_KEEPALIVE_IDLE_SECONDS))
+            if hasattr(socket, "TCP_KEEPINTVL"):
+                socket_options.append(
+                    (socket.IPPROTO_TCP, socket.TCP_KEEPINTVL, TCP_KEEPALIVE_INTERVAL_SECONDS))
+            if hasattr(socket, "TCP_KEEPCNT"):
+                socket_options.append(
+                    (socket.IPPROTO_TCP, socket.TCP_KEEPCNT, TCP_KEEPALIVE_PROBE_COUNT))
+            # macOS uses TCP_KEEPALIVE in seconds (not the Linux triple)
+            elif hasattr(socket, "TCP_KEEPALIVE"):
+                socket_options.append(
+                    (socket.IPPROTO_TCP, socket.TCP_KEEPALIVE, TCP_KEEPALIVE_IDLE_SECONDS))
+
+            transport = httpx.AsyncHTTPTransport(
+                limits=httpx.Limits(
+                    max_keepalive_connections=MAX_KEEPALIVE_CONNECTIONS,
+                    max_connections=MAX_KEEPALIVE_CONNECTIONS * 2,
+                    keepalive_expiry=KEEPALIVE_EXPIRY_SECONDS,
+                ),
+                socket_options=socket_options,
+                http2=False,
+                retries=0,
+            )
+
+            return httpx.AsyncClient(
+                transport=transport,
+                timeout=httpx.Timeout(
+                    connect=CONNECT_TIMEOUT_SECONDS,
+                    read=READ_TIMEOUT_SECONDS,
+                    write=10.0,
+                    pool=5.0,
+                ),
+            )
+        except Exception as e:
+            # Fall back to plain httpx config if the transport-level config
+            # fails (rare, but safer than crashing on a Windows oddity)
+            print(f"[GroqRotator] ⚠️  TCP keepalive setup failed ({e}) — "
+                  f"falling back to pool-only keepalive")
+            return httpx.AsyncClient(
+                limits=httpx.Limits(
+                    max_keepalive_connections=MAX_KEEPALIVE_CONNECTIONS,
+                    max_connections=MAX_KEEPALIVE_CONNECTIONS * 2,
+                    keepalive_expiry=KEEPALIVE_EXPIRY_SECONDS,
+                ),
+                timeout=httpx.Timeout(
+                    connect=CONNECT_TIMEOUT_SECONDS,
+                    read=READ_TIMEOUT_SECONDS,
+                    write=10.0,
+                    pool=5.0,
+                ),
+                http2=False,
+            )
+
+    async def _get_client_for_key(self, key: str) -> AsyncOpenAI:
+        """Get (or lazily create) the AsyncOpenAI client bound to this key.
+
+        Uses a custom httpx client with 5-minute keepalive so connections
+        survive pauses between turns.
+        """
+        # Fast path — no lock if already cached
+        client = self._clients.get(key)
+        if client is not None:
+            return client
+        async with self._clients_lock:
+            # Re-check under lock (another coroutine may have created it)
+            client = self._clients.get(key)
+            if client is None:
+                # Build our own httpx client with LONG keepalive — this is
+                # the whole point of these changes.
+                http_client = self._build_httpx_client()
+                self._http_clients[key] = http_client
+                client = AsyncOpenAI(
+                    api_key=key,
+                    base_url=GROQ_BASE_URL,
+                    http_client=http_client,
+                )
+                self._clients[key] = client
+            return client
+
+    async def _create_with_rotation(self, **kwargs):
+        """Make a chat.completions.create call with automatic 429 rotation.
+
+        Returns whatever AsyncOpenAI returns:
+            - stream=False: ChatCompletion object
+            - stream=True:  AsyncStream (async iterator of ChatCompletionChunk)
+        """
+        if not self._rotator.is_enabled():
+            raise RuntimeError(
+                "GroqRotatingClient: no API keys configured "
+                "(set GROQ_API_KEYS or GROQ_API_KEY in .env)"
+            )
+
+        # Max attempts = key count. If all are cooling, give up and raise.
+        max_attempts = max(1, self._rotator.get_key_count())
+        last_error: Optional[Exception] = None
+
+        for attempt in range(max_attempts):
+            key_info = await self._rotator.get_next_key()
+            if key_info is None:
+                # All keys cooling down — nothing to retry
+                break
+
+            key, label = key_info
+            client = await self._get_client_for_key(key)
+
+            try:
+                result = await client.chat.completions.create(**kwargs)
+                await self._rotator.mark_success(key)
+                return result
+
+            except RateLimitError as e:
+                # 429 — mark cooling and try next key
+                await self._rotator.mark_rate_limited(key)
+                last_error = e
+                continue
+
+            except APIStatusError as e:
+                # Other HTTP error from server (500, 502, 503, etc.)
+                # Not a rate-limit issue — don't rotate, just raise.
+                await self._rotator.mark_error(key)
+                raise
+
+            except asyncio.CancelledError:
+                # Task cancellation — don't mark the key as broken
+                raise
+
+            except Exception as e:
+                # Network/timeout/other local error — mark and raise
+                await self._rotator.mark_error(key)
+                raise
+
+        # Exhausted all keys (or none were available)
+        if last_error is not None:
+            # Re-raise the last 429 so caller sees a RateLimitError
+            raise last_error
+        raise RuntimeError(
+            f"GroqRotatingClient {self._tag}: all "
+            f"{self._rotator.get_key_count()} keys are cooling down"
+        )
+
+    async def warm_all_keys(self) -> None:
+        """Warm up HTTP connections for every key in the rotator.
+
+        DISABLED BY DEFAULT (set GROQ_KEEPALIVE_API_PINGS=1 to enable).
+
+        This used to send a 1-token chat.completions.create() to each of
+        your 12 keys at session start (and again every 30s via the keepalive
+        loop). On Groq's free tier — where rate limits are 30 RPM applied
+        ORG-WIDE, not per key — that burned 24+ requests/min purely for
+        warmup, leaving almost nothing for actual user turns. This was the
+        cause of the rate-limit storms in production.
+
+        TCP+TLS warmth is now handled for free by:
+          1. httpx pool keepalive (10 min — see KEEPALIVE_EXPIRY_SECONDS)
+          2. SO_KEEPALIVE TCP probes (kernel-level, no API cost)
+
+        Calling this is a no-op by default. Re-enable only on Groq Dev tier
+        (300+ RPM) where the API quota cost is negligible.
+        """
+        if not GROQ_KEEPALIVE_API_PINGS:
+            return  # no-op — see docstring
+
+        if not self._rotator.is_enabled():
+            return
+
+        # Extract all keys from the rotator (we need direct access here,
+        # not round-robin — we want to hit EVERY key)
+        keys = [ks.key for ks in self._rotator._keys]  # type: ignore
+
+        async def warm_one(key: str, label: str) -> None:
+            try:
+                client = await self._get_client_for_key(key)
+                await asyncio.wait_for(
+                    client.chat.completions.create(
+                        model=KEEPALIVE_PING_MODEL,
+                        messages=[{"role": "user", "content": "."}],
+                        max_tokens=1,
+                        temperature=0.0,
+                    ),
+                    timeout=10.0,
+                )
+            except Exception as e:
+                # Warmup errors are non-fatal — the key just won't be warm
+                print(f"[GroqRotator] {self._tag} ⚠️  warm {label} failed: "
+                      f"{type(e).__name__}")
+
+        # Warm all keys in parallel
+        tasks = [
+            warm_one(ks.key, ks.label)
+            for ks in self._rotator._keys  # type: ignore
+        ]
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+        count = len(tasks)
+        print(f"[GroqRotator] {self._tag} 🔥 Warmed {count} key(s) — "
+              f"connections alive for {KEEPALIVE_EXPIRY_SECONDS:.0f}s")
+
+    def start_keepalive_task(self) -> Optional[asyncio.Task]:
+        """Start a background task that pings all keys every 30s.
+
+        DISABLED BY DEFAULT (set GROQ_KEEPALIVE_API_PINGS=1 to enable).
+
+        Returns None when disabled. See warm_all_keys() docstring for the
+        rate-limit explanation. TCP socket keepalive (kernel-level, free)
+        and httpx pool keepalive (10 min) handle warmth without API quota.
+
+        When re-enabled (Groq Dev tier only), starts a loop that calls
+        warm_all_keys() every KEEPALIVE_PING_INTERVAL_SECONDS.
+        """
+        if not GROQ_KEEPALIVE_API_PINGS:
+            return None  # no-op — see warm_all_keys docstring
+
+        if self._keepalive_task is not None and not self._keepalive_task.done():
+            return self._keepalive_task
+
+        async def _keepalive_loop() -> None:
+            print(f"[GroqRotator] {self._tag} 💓 keepalive loop started "
+                  f"(interval={KEEPALIVE_PING_INTERVAL_SECONDS:.0f}s)")
+            try:
+                while True:
+                    await asyncio.sleep(KEEPALIVE_PING_INTERVAL_SECONDS)
+                    try:
+                        await self.warm_all_keys()
+                    except Exception as e:
+                        # Never let keepalive crash the session
+                        print(f"[GroqRotator] {self._tag} ⚠️  keepalive "
+                              f"iteration failed: {e}")
+            except asyncio.CancelledError:
+                print(f"[GroqRotator] {self._tag} 💓 keepalive loop stopped")
+                raise
+
+        self._keepalive_task = asyncio.create_task(_keepalive_loop())
+        return self._keepalive_task
+
+    async def close(self) -> None:
+        """Close all cached per-key AsyncOpenAI + httpx clients and stop keepalive."""
+        # Stop keepalive task first
+        if self._keepalive_task is not None and not self._keepalive_task.done():
+            self._keepalive_task.cancel()
+            try:
+                await self._keepalive_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._keepalive_task = None
+
+        async with self._clients_lock:
+            for client in self._clients.values():
+                try:
+                    await client.close()
+                except Exception:
+                    pass
+            self._clients.clear()
+            # Also close our owned httpx clients
+            for http_client in self._http_clients.values():
+                try:
+                    await http_client.aclose()
+                except Exception:
+                    pass
+            self._http_clients.clear()
+
+    def get_stats(self) -> dict:
+        """Return rotator stats — useful for diagnostics endpoints."""
+        return self._rotator.get_stats()
+
+    @property
+    def key_count(self) -> int:
+        """Number of keys in the rotator pool."""
+        return self._rotator.get_key_count()
