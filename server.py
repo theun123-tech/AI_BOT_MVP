@@ -320,9 +320,20 @@ async def handle_jira_test(request):
         return web.json_response({"error": "Unauthorized"}, status=401)
     try:
         from external_apis import JiraClient
-        jira = JiraClient()
+        # Read credentials from POST body (UI form). If body is empty or
+        # missing fields, JiraClient falls back to env vars per field.
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+        jira = JiraClient(
+            base_url=body.get("base_url"),
+            email=body.get("email"),
+            token=body.get("token"),
+            project=body.get("project"),
+        )
         if not jira.enabled:
-            return web.json_response({"ok": False, "error": "Not configured"})
+            return web.json_response({"ok": False, "error": "Not configured (need base_url, email, and token)"})
         ok = await jira.test_connection()
         await jira.close()
         return web.json_response({"ok": ok, "message": f"Connected to {jira.base_url}" if ok else "Failed"})
@@ -336,7 +347,18 @@ async def handle_jira_projects(request):
         return web.json_response({"error": "Unauthorized"}, status=401)
     try:
         from external_apis import JiraClient
-        jira = JiraClient()
+        # If the UI POSTs credentials, use them. Otherwise (legacy GET, or
+        # POST with empty body) fall through to env vars.
+        try:
+            body = await request.json() if request.method == "POST" else {}
+        except Exception:
+            body = {}
+        jira = JiraClient(
+            base_url=body.get("base_url"),
+            email=body.get("email"),
+            token=body.get("token"),
+            project=body.get("project"),
+        )
         projects = await jira.get_projects() if jira.enabled else []
         await jira.close()
         return web.json_response({"projects": projects})
@@ -1179,7 +1201,8 @@ async def main():
         ("GET", "/api/settings", handle_settings_get),
         ("POST", "/api/settings/save", handle_settings_save),
         ("POST", "/api/settings/jira/test", handle_jira_test),
-        ("GET", "/api/jira/projects", handle_jira_projects),
+        ("GET",  "/api/jira/projects", handle_jira_projects),
+        ("POST", "/api/jira/projects", handle_jira_projects),
         ("GET", "/api/jira/sprints", handle_jira_sprints),
         ("GET", "/api/pending", handle_pending_get),
         ("POST", "/api/pending/sync", handle_pending_sync),
