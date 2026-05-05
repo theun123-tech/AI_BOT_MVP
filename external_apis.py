@@ -201,12 +201,7 @@ class AzureExtractor:
 
     def __init__(self):
         self.endpoint   = os.environ.get("AZURE_ENDPOINT", "").strip().rstrip("/")
-        # Stage R: shared key rotator. Reads AZURE_API_KEYS (comma-separated,
-        # any count) and AZURE_API_KEY (singular, backward compat). With a
-        # single key configured, rotation is a no-op; future-ready for more.
-        from key_rotator import load_keys as _load_keys
-        self._azure_keys = _load_keys("AZURE")
-        self.api_key    = self._azure_keys[0] if self._azure_keys else ""
+        self.api_key    = os.environ.get("AZURE_API_KEY", "").strip()
         self.deployment = os.environ.get("AZURE_DEPLOYMENT", "gpt-4o-mini").strip()
         self.api_version = os.environ.get("AZURE_API_VERSION", "2024-02-15-preview").strip()
 
@@ -217,8 +212,7 @@ class AzureExtractor:
 
         self.enabled = True
         self._client = httpx.AsyncClient(timeout=60)
-        print(f"[Azure] ✅ Configured: {self.endpoint} (deployment: {self.deployment}, "
-              f"{len(self._azure_keys)} key(s))")
+        print(f"[Azure] ✅ Configured: {self.endpoint} (deployment: {self.deployment})")
 
     async def extract_action_items(self, transcript: str, date_str: str = "",
                                     pending_intents: list | None = None) -> list[dict]:
@@ -521,11 +515,39 @@ class JiraTransitionError(Exception):
 
 
 class JiraClient:
-    def __init__(self):
-        self.base_url = os.environ.get("JIRA_BASE_URL", "").strip().rstrip("/")
-        self.email    = os.environ.get("JIRA_EMAIL", "").strip()
-        self.token    = os.environ.get("JIRA_API_TOKEN", "").strip()
-        self.project  = os.environ.get("JIRA_DEFAULT_PROJECT", "PROJ").strip()
+    def __init__(self, base_url: str = None, email: str = None,
+                 token: str = None, project: str = None):
+        # Three-tier resolution per field:
+        #   1. Explicit override arg (used by Settings UI test/load handlers)
+        #   2. settings.json (UI source of truth, written by Save Settings button)
+        #   3. Environment variable (fallback default — used at first launch)
+        #
+        # This is the fix for the "UI changed project but bot still uses
+        # env-var project" bug: settings.json now wins over env vars, so the
+        # UI's saved choice survives Railway restarts.
+        try:
+            from storage import load_settings
+            saved = load_settings()
+        except Exception:
+            saved = {}  # fail-safe: settings file unreadable, use env only
+
+        def _pick(override, saved_val, env_key, default=""):
+            v = (override or "").strip() if override else ""
+            if v:
+                return v
+            v = (saved_val or "").strip() if saved_val else ""
+            if v:
+                return v
+            return os.environ.get(env_key, default).strip()
+
+        self.base_url = _pick(base_url, saved.get("jira_url"),
+                              "JIRA_BASE_URL").rstrip("/")
+        self.email    = _pick(email,    saved.get("jira_email"),
+                              "JIRA_EMAIL")
+        self.token    = _pick(token,    saved.get("jira_token"),
+                              "JIRA_API_TOKEN")
+        self.project  = _pick(project,  saved.get("jira_project"),
+                              "JIRA_DEFAULT_PROJECT", "PROJ")
 
         if not all([self.base_url, self.email, self.token]):
             print("[Jira] ⚠️  Missing JIRA_BASE_URL, JIRA_EMAIL, or JIRA_API_TOKEN — Jira disabled")
@@ -1174,22 +1196,15 @@ class ExaSearch:
     _DEFAULT_TYPE = "instant"  # "auto" picks neural vs keyword per-query
  
     def __init__(self):
-        # Stage R: shared key rotator. Reads EXA_API_KEYS (comma-separated,
-        # any count) and EXA_API_KEY (singular, backward compat).
-        from key_rotator import load_keys as _load_keys
-        self._exa_keys = _load_keys("EXA")
-        # api_key remains for any legacy code paths that still reference it
-        # directly; it's the first key in the rotation pool.
-        self.api_key = self._exa_keys[0] if self._exa_keys else ""
+        self.api_key = os.environ.get("EXA_API_KEY", "").strip().strip('"\'')
  
-        if not self._exa_keys:
-            print("[ExaSearch] ⚠️  No EXA_API_KEY(S) set — Exa search disabled "
+        if not self.api_key:
+            print("[ExaSearch] ⚠️  No EXA_API_KEY set — Exa search disabled "
                   "(will fall back to Brave)")
             self.enabled = False
         else:
             self.enabled = True
-            print(f"[ExaSearch] ✅ Configured ({len(self._exa_keys)} key(s), "
-                  f"first: {self.api_key[:8]}...)")
+            print(f"[ExaSearch] ✅ Configured (key: {self.api_key[:8]}...)")
  
         # 5s budget cap — Exa typically returns in ~1.5s; if it's slower than
         # 5s we'd rather fall back to Brave than blow the filler window.
@@ -1270,21 +1285,12 @@ class ExaSearch:
  
         debug_file_path = None
  
-        # Stage R: pick a fresh key per request (rotates across all configured
-        # Exa keys with cooldown-aware skipping). Falls back to first key if
-        # rotator returns nothing.
-        try:
-            from key_rotator import key_for_request as _key_for_request
-            _exa_key = _key_for_request("EXA") or self.api_key
-        except Exception:
-            _exa_key = self.api_key
-
         try:
             t_http = time.time()
             resp = await self._client.post(
                 self._ENDPOINT,
                 headers={
-                    "x-api-key": _exa_key,
+                    "x-api-key": self.api_key,
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 },
@@ -1296,12 +1302,6 @@ class ExaSearch:
                   f"(status={resp.status_code}, {content_len} bytes)")
  
             if resp.status_code == 401:
-                # Stage R: mark this key bad so rotator skips it
-                try:
-                    from key_rotator import mark_key_failed as _mark_key_failed
-                    _mark_key_failed("EXA", _exa_key, cooldown_seconds=300.0)
-                except Exception:
-                    pass
                 print(f"[ExaSearch] ║ ❌ 401 Unauthorized — check EXA_API_KEY")
                 print(f"[ExaSearch] ╚══════════════════════════════════════════════════════════════")
                 self.consecutive_failures += 1
@@ -1428,10 +1428,16 @@ class ExaSearch:
 
 class WebSearch:
     def __init__(self):
-        # Stage R: shared key rotator. Reads SERPAPI_KEYS (comma-separated,
-        # any count), SERPAPI_KEY (singular), and legacy SERPAPI_KEY_1..N.
-        from key_rotator import load_keys as _load_keys
-        self._keys = _load_keys("SERPAPI")
+        self._keys = []
+        # Load SERPAPI_KEY_1 through SERPAPI_KEY_17 (only those set)
+        for i in range(1, 18):
+            k = os.environ.get(f"SERPAPI_KEY_{i}", "").strip().strip('"\'')
+            if k:
+                self._keys.append(k)
+        # Backwards compatibility: also accept SERPAPI_KEY (unnumbered)
+        k_plain = os.environ.get("SERPAPI_KEY", "").strip().strip('"\'')
+        if k_plain and k_plain not in self._keys:
+            self._keys.append(k_plain)
         if not self._keys:
             print("[WebSearch] ⚠️  No SERPAPI keys — web search disabled")
         else:
@@ -1441,17 +1447,6 @@ class WebSearch:
         self._client = httpx.AsyncClient(timeout=20.0)
 
     def _next_key(self) -> str:
-        # Stage R: delegate to shared rotator for global round-robin and
-        # cooldown-aware skipping. Falls back to local index if rotator
-        # has no keys for this service (shouldn't happen — we just loaded).
-        try:
-            from key_rotator import key_for_request as _key_for_request
-            key = _key_for_request("SERPAPI")
-            if key:
-                return key
-        except Exception:
-            pass
-        # Defensive fallback to legacy local rotation
         key = self._keys[self._key_index % len(self._keys)]
         self._key_index += 1
         return key
@@ -2228,11 +2223,10 @@ class RecallBot:
                    "Zoom" if "zoom.us" in meeting_url else "Unknown"
 
         # Decide STT strategy:
-        #   - USE_PER_SPEAKER_FLUX=1 (default) → NO Recall.ai STT in either mode.
-        #     Both client and standup rely on the user's own Deepgram Flux pipeline.
-        #   - USE_PER_SPEAKER_FLUX=0 → fall back to Recall.ai STT (AssemblyAI/Nova-3).
-        #     Legacy behavior; preserved for backward compatibility.
-        use_recall_stt = not USE_PER_SPEAKER_FLUX
+        #   - Standup mode → always use Recall.ai STT (AssemblyAI/Deepgram)
+        #   - Client mode + USE_PER_SPEAKER_FLUX → NO Recall.ai STT, we run our own
+        #   - Client mode + toggle off → fall back to Recall.ai STT
+        use_recall_stt = (mode == "standup") or (not USE_PER_SPEAKER_FLUX)
 
         if use_recall_stt:
             stt_label = "AssemblyAI Universal-3 Pro" if USE_ASSEMBLYAI else "Deepgram Nova-3"
