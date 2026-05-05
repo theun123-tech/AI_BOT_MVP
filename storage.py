@@ -120,6 +120,10 @@ def load_settings() -> dict:
         "azure_endpoint":   saved.get("azure_endpoint",   os.environ.get("AZURE_ENDPOINT", "")),
         "azure_key":        saved.get("azure_key",        os.environ.get("AZURE_API_KEY", "")),
         "azure_deployment": saved.get("azure_deployment", os.environ.get("AZURE_DEPLOYMENT", "gpt-4o-mini")),
+        # ── Simli (was missing — caused enabled toggle to always read False) ──
+        "simli_enabled":  bool(saved.get("simli_enabled", False)),
+        "simli_api_key":  saved.get("simli_api_key", os.environ.get("SIMLI_API_KEY", "")),
+        "simli_face_id":  saved.get("simli_face_id", os.environ.get("SIMLI_FACE_ID", "")),
     }
 
 def save_settings(settings: dict):
