@@ -1196,15 +1196,35 @@ class ExaSearch:
     _DEFAULT_TYPE = "instant"  # "auto" picks neural vs keyword per-query
  
     def __init__(self):
-        self.api_key = os.environ.get("EXA_API_KEY", "").strip().strip('"\'')
- 
-        if not self.api_key:
-            print("[ExaSearch] ⚠️  No EXA_API_KEY set — Exa search disabled "
+        # exa_rotation_v1: multi-key rotation via shared key_rotator.
+        # Reads BOTH EXA_API_KEYS (plural, comma-separated) and EXA_API_KEY
+        # (singular, backward compat). Falls back to single-env-var read if
+        # the rotator isn't importable (defensive — should always work).
+        self._exa_keys = []
+        try:
+            from key_rotator import load_keys as _load_keys
+            self._exa_keys = list(_load_keys("EXA"))
+        except Exception as e:
+            print(f"[ExaSearch] ⚠️  key_rotator unavailable ({e}) — single-key mode")
+            single = os.environ.get("EXA_API_KEY", "").strip().strip('"\'')
+            if single:
+                self._exa_keys = [single]
+
+        # Per-session state for rotation
+        self._exa_key_index = 0
+        self._exa_failed_keys = set()  # keys that returned 401/429 this session
+
+        if not self._exa_keys:
+            print("[ExaSearch] ⚠️  No EXA_API_KEY(S) set — Exa search disabled "
                   "(will fall back to Brave)")
             self.enabled = False
+            self.api_key = ""  # back-compat for any external readers
         else:
             self.enabled = True
-            print(f"[ExaSearch] ✅ Configured (key: {self.api_key[:8]}...)")
+            self.api_key = self._exa_keys[0]  # back-compat: first key
+            count = len(self._exa_keys)
+            preview = self._exa_keys[0][:8]
+            print(f"[ExaSearch] ✅ Configured ({count} key(s), first: {preview}...)")
  
         # 5s budget cap — Exa typically returns in ~1.5s; if it's slower than
         # 5s we'd rather fall back to Brave than blow the filler window.
@@ -1213,6 +1233,36 @@ class ExaSearch:
         # Circuit breaker — if Exa fails N times in a row, websocket_server can
         # check this counter and decide to skip Exa for the remainder of session.
         self.consecutive_failures = 0
+
+    # ── exa_rotation_v1: key rotation helpers ────────────────────────────
+    def _next_exa_key(self):
+        """Return the next non-blacklisted key, or None if all blacklisted."""
+        if not self._exa_keys:
+            return None
+        attempts = 0
+        while attempts < len(self._exa_keys):
+            key = self._exa_keys[self._exa_key_index % len(self._exa_keys)]
+            self._exa_key_index += 1
+            attempts += 1
+            if key not in self._exa_failed_keys:
+                return key
+        # All blacklisted — return None so caller can decide what to do.
+        # We do NOT clear the blacklist within a session; that's a fresh-start
+        # decision and would mask real auth/quota problems.
+        return None
+
+    def _blacklist_exa_key(self, key, reason=""):
+        """Mark a key as failed for the rest of this session."""
+        if not key or key in self._exa_failed_keys:
+            return
+        self._exa_failed_keys.add(key)
+        try:
+            key_num = self._exa_keys.index(key) + 1
+        except ValueError:
+            key_num = "?"
+        active = len(self._exa_keys) - len(self._exa_failed_keys)
+        print(f"[ExaSearch] 🚫 Blacklisted key #{key_num} ({reason}) — "
+              f"{active} key(s) remaining")
  
     async def search(
         self,
@@ -1285,35 +1335,58 @@ class ExaSearch:
  
         debug_file_path = None
  
+        # exa_rotation_v1: try each non-blacklisted key in turn.
+        # Retry loop is bounded by key count to stay within the 5s budget
+        # cap (httpx timeout). Each attempt has its own timeout, so total
+        # worst-case is bounded but multiple keys CAN extend latency.
+        max_key_attempts = max(1, len(self._exa_keys) - len(self._exa_failed_keys))
+        resp = None
+        used_key = None
+        last_status = None
         try:
             t_http = time.time()
-            resp = await self._client.post(
-                self._ENDPOINT,
-                headers={
-                    "x-api-key": self.api_key,
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                },
-                json=request_body,
-            )
+            for attempt in range(max_key_attempts):
+                used_key = self._next_exa_key()
+                if used_key is None:
+                    # All keys blacklisted — bail to Brave fallback
+                    print(f"[ExaSearch] ║ ❌ All {len(self._exa_keys)} key(s) "
+                          f"blacklisted this session — falling back")
+                    print(f"[ExaSearch] ╚══════════════════════════════════════════════════════════════")
+                    self.consecutive_failures += 1
+                    return None
+
+                resp = await self._client.post(
+                    self._ENDPOINT,
+                    headers={
+                        "x-api-key": used_key,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    json=request_body,
+                )
+                last_status = resp.status_code
+
+                # Auth/quota failure → blacklist this key and try the next
+                if resp.status_code in (401, 429):
+                    reason = "401 unauthorized" if resp.status_code == 401 else "429 rate-limited"
+                    self._blacklist_exa_key(used_key, reason)
+                    if attempt < max_key_attempts - 1:
+                        print(f"[ExaSearch] ║ 🔁 {reason} — rotating to next key")
+                        continue
+                    # Exhausted all keys with auth/quota errors
+                    print(f"[ExaSearch] ║ ❌ All keys returned {reason}")
+                    print(f"[ExaSearch] ╚══════════════════════════════════════════════════════════════")
+                    self.consecutive_failures += 1
+                    return None
+
+                # Any other response code: stop rotating, handle below
+                break
+
             http_ms = (time.time() - t_http) * 1000
-            content_len = len(resp.content) if resp.content else 0
+            content_len = len(resp.content) if resp and resp.content else 0
             print(f"[ExaSearch] ║ HTTP round-trip: {http_ms:.0f}ms  "
-                  f"(status={resp.status_code}, {content_len} bytes)")
- 
-            if resp.status_code == 401:
-                print(f"[ExaSearch] ║ ❌ 401 Unauthorized — check EXA_API_KEY")
-                print(f"[ExaSearch] ╚══════════════════════════════════════════════════════════════")
-                self.consecutive_failures += 1
-                return None
- 
-            if resp.status_code == 429:
-                print(f"[ExaSearch] ║ ❌ 429 Rate-limited — likely free-tier quota exceeded")
-                print(f"[ExaSearch] ║    Falling back to Brave for the rest of session")
-                print(f"[ExaSearch] ╚══════════════════════════════════════════════════════════════")
-                self.consecutive_failures += 1
-                return None
- 
+                  f"(status={last_status}, {content_len} bytes)")
+
             if resp.status_code >= 400:
                 err_text = resp.text[:300] if resp.text else "(no body)"
                 print(f"[ExaSearch] ║ ❌ HTTP {resp.status_code}: {err_text}")
